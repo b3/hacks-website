@@ -1,4 +1,4 @@
-DESTINATION=/tmp/a
+DESTINATION=/tmp/ws
 TEMPLATE=$(SOURCE)/Modele.html
 
 START_MARK=<!-- @DEBUT_CONTENU@ -->
@@ -80,7 +80,7 @@ FILES=$(subst \
                     -e '^$(SOURCE)/Makefile$$' \
                     -e '/$(IGNORE)$$' \
                     -e '/$(KEEP)$$' \
-					$(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE))) \
+					$(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE) 2>/dev/null)) \
                     -e '~$$' \
                     -e $(TIDY_CONFIG)))
 
@@ -99,7 +99,8 @@ fi
 TEST_KEEP = \
    grep -xsq "^$$file$$" $$dir$(KEEP) \
 || grep -xsq "^$$dir$$file$$" $(SOURCE)/$(KEEP) \
-|| grep -xsq "^$$dir$$" $(SOURCE)/$(KEEP) 
+|| grep -xsq "^$$dir$$" $(SOURCE)/$(KEEP) \
+|| ( echo $(SOURCE)/$$dir | grep -sq $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(KEEP) 2>/dev/null)) )
 
 CMD_TIDY = $(shell which tidy)
 
@@ -177,7 +178,7 @@ debug:
 	@echo "    TEMPLATE = $(TEMPLATE)"
 	@echo "  START_MARK = $(START_MARK)"
 	@echo "   STOP_MARK = $(STOP_MARK)"
-	@echo "         TMP = 					$(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE))) "
+	@echo "         TMP = $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE) 2>/dev/null)) "
 
 list:
 	@for i in $(FILES) ; do echo $$i; done
