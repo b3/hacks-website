@@ -1,0 +1,4 @@
+* Ajouter la possibilité d'exécuter les makefiles dans les répertoires s'il y
+   en a (cf Makefile du noyau linux)
+
+* Fixer les BUGS (cf FIXME)

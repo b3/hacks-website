@@ -1,4 +1,4 @@
-DESTINATION=
+DESTINATION=/tmp/a
 TEMPLATE=$(SOURCE)/Modele.html
 
 START_MARK=<!-- @DEBUT_CONTENU@ -->
@@ -7,7 +7,7 @@ STOP_MARK=<!-- @FIN_CONTENU@ -->
 TIDY_CONFIG=tidy.cfg
 
 IGNORE=.ignore
-KEEP=keep:
+KEEP=.keep
 
 SED_PROG=/tmp/s
 
@@ -32,43 +32,41 @@ SED_PROG=/tmp/s
 # Les fichiers sans extension .html sont copies tel quel dans le repertoire
 # destination.
 #
-# Chaque repertoire peut contenir un fichier IGNORE qui peut contenir sur
-# chacune de ses lignes :
+# Certains fichiers peuvent etre ignores completement par le processus (on en
+# fait rien du tout). C'est le cas si :
 #
-# * le nom de base d'un fichier qu'il faut ignorer completement (ne rien en
-#   faire du tout),
+# * son nom de base est present dans le fichier IGNORE de son repertoire,
 #
-# * le nom de base d'un fichier avec extension .html, prefixe par KEEP, qui
-#   doit etre copie tel quel dans le repertoire destination (sans subir la
-#   transformation utilisant les marques START_MARK et STOP_MARK).
+# * son chemin relatif a la racine est present dans le fichier IGNORE de la
+#   racine,
 #
-# En plus de ca le fichier IGNORE de la racine des sources (meme repertoire
-# que ce Makefile) peut contenir sur chacune de ses lignes :
+# * le chemin de son repertoire (avec le dernier slash) est present dans le
+#   fichier IGNORE de la racine (meme repertoire que ce makefile),
 #
-# * le chemin d'un repertoire (avec le dernier slash) dont il faut
-#   completement ignorer les fichiers (pas les repertoires),
-# 
-# * le chemin relatif a la racine d'un fichier qu'il faut ignorer
-#   completement,
+# Certains fichiers avec extension .html, peuvent etre copie tels quels (sans
+# subir la transformation utilisant les marques START_MARK et
+# STOP_MARK). C'est le cas si :
 #
-# * le chemin d'un repertoire (avec le dernier slash), prefixe par KEEP, dont
-#   les fichiers doivent etre copie tel quel dans le repertoire destination,
+# * son nom de base est present dans le fichier KEEP de son repertoire,
 #
-# * le chemin relatif a la racine d'un fichier avec extension .html, prefixe
-#   par KEEP, qui doit etre copie tel quel dans le repertoire destination.
+# * son chemin relatif a la racine est present dans le fichier KEEP de la
+#   racine,
+#
+# * le chemin de son repertoire (avec le dernier slash) est present dans le
+#   fichier KEEP de la racine,
 #
 # Les fichiers TEMPLATE (ou de meme nom de base), Makefile et TIDY_CONFIG ne
 # sont pas pris en compte.
 #
-# Les fichiers IGNORE et les fichiers de backup d'Emacs (avec extension ~)
-# sont ignores par defaut.
+# Les fichiers IGNORE, KEEP et les fichiers de backup d'Emacs (avec extension
+# ~) sont ignores par defaut.
 #
 # La transformation des fichiers a extension .html utilise sed via un
 # programme construit dans SED_PROG.
 #
 ##############################################################################
 
-.PHONY: clean real-clean check
+.PHONY: clean real-clean check debug list
 
 DEBUG_DEPS=
 
@@ -78,9 +76,12 @@ FILES=$(subst \
   $(SOURCE)/, \
   $(DESTINATION)/, \
   $(shell find -H $(SOURCE) -type f -o -type l \
-          | grep -v -e '$(notdir $(TEMPLATE))$$' \
+          | grep -v -e '/$(notdir $(TEMPLATE))$$' \
                     -e '^$(SOURCE)/Makefile$$' \
-                    -e '$(IGNORE)$$' \
+                    -e '/$(IGNORE)$$' \
+                    -e '/$(KEEP)$$' \
+					$(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE))) \
+                    -e '~$$' \
                     -e $(TIDY_CONFIG)))
 
 CMD_NAMES = \
@@ -90,17 +91,15 @@ CMD_NAMES = \
 CMD_IGNORE = \
 if    grep -xsq "^$$file$$" $$dir$(IGNORE) \
    || grep -xsq "^$$dir$$file$$" $(SOURCE)/$(IGNORE) \
-   || grep -xsq "^$$dir$$" $(SOURCE)/$(IGNORE) \
-   || echo $$file | grep -q '~$$' \
-   || test $$file = $(IGNORE) ; then \
+   || grep -xsq "^$$dir$$" $(SOURCE)/$(IGNORE) ; then \
   echo "  IGNORE $$dir$$file" ; \
   exit ; \
 fi
 
 TEST_KEEP = \
-   grep -xsq "^$(KEEP)$$file$$" $$dir$(IGNORE) \
-|| grep -xsq "^$(KEEP)$$dir$$" $(SOURCE)/$(IGNORE) \
-|| grep -xsq "^$(KEEP)$$dir$$file$$" $(SOURCE)/$(IGNORE)
+   grep -xsq "^$$file$$" $$dir$(KEEP) \
+|| grep -xsq "^$$dir$$file$$" $(SOURCE)/$(KEEP) \
+|| grep -xsq "^$$dir$$" $(SOURCE)/$(KEEP) 
 
 CMD_TIDY = $(shell which tidy)
 
@@ -110,7 +109,7 @@ echo "    COPY $$dir$$file" ; \
   cp -d -f $< $@
 
 # FIXME: super lent faudrait faire faire le travail par make plutot que sh
-# FIXME: la dependance n'est pas bonne : si un TEMPLATE nouveau est present le fichier n'est pas recree
+# FIXME: les dependances ne sont pas bonne : si un TEMPLATE nouveau est present le fichier n'est pas recree
 TEMPLATE_TO_USE = \
   `( \
     n=\`echo $$dir | tr / '\n' | wc -l\` ; \
@@ -178,7 +177,10 @@ debug:
 	@echo "    TEMPLATE = $(TEMPLATE)"
 	@echo "  START_MARK = $(START_MARK)"
 	@echo "   STOP_MARK = $(STOP_MARK)"
-#	@for i in $(FILES) ; do echo $$i; done
+	@echo "         TMP = 					$(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE))) "
+
+list:
+	@for i in $(FILES) ; do echo $$i; done
 
 $(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(TEMPLATE)
 	@$(DO_HTML)
@@ -194,3 +196,7 @@ real-clean:
 
 check:
 	@$(DO_CHECK) tidy
+
+##############################################################################
+
+# End
