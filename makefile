@@ -23,7 +23,7 @@ SED_PROG=/tmp/s
 # Le modele utilise est un fichier, de meme nom de base que TEMPLATE, present
 # dans le repertoire du fichier .html traite, ou dans un des repertoires
 # parents en remontant jusqu'a la racine des sources (meme endroit que ce
-# Makefile), ou simplement le fichier TEMPLATE. Le choix est fait dans cet
+# makefile), ou simplement le fichier TEMPLATE. Le choix est fait dans cet
 # ordre (le premier trouve est utilise).
 #
 # Les fichiers .html generes sont nettoyes avec tidy en utilisant le fichier
@@ -55,7 +55,7 @@ SED_PROG=/tmp/s
 # * le chemin de son repertoire (avec le dernier slash) est present dans le
 #   fichier KEEP de la racine,
 #
-# Les fichiers TEMPLATE (ou de meme nom de base), Makefile et TIDY_CONFIG ne
+# Les fichiers TEMPLATE (ou de meme nom de base), makefile et TIDY_CONFIG ne
 # sont pas pris en compte.
 #
 # Les fichiers IGNORE, KEEP et les fichiers de backup d'Emacs (avec extension
@@ -77,7 +77,7 @@ FILES=$(subst \
   $(DESTINATION)/, \
   $(shell find -H $(SOURCE) -type f -o -type l \
           | grep -v -e '/$(notdir $(TEMPLATE))$$' \
-                    -e '^$(SOURCE)/Makefile$$' \
+                    -e '^$(SOURCE)/makefile$$' \
                     -e '/$(IGNORE)$$' \
                     -e '/$(KEEP)$$' \
 					$(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE) 2>/dev/null)) \
