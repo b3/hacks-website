@@ -1,118 +1,121 @@
-DESTINATION=/tmp/ws
-TEMPLATE=$(SOURCE)/Modele.html
+DESTINATION := /tmp/ws
+TEMPLATE = $(SOURCE)/Modele.html
 
-START_MARK=<!-- @DEBUT_CONTENU@ -->
-STOP_MARK=<!-- @FIN_CONTENU@ -->
+START_MARK := <!-- @DEBUT_CONTENU@ -->
+STOP_MARK := <!-- @FIN_CONTENU@ -->
 
-TIDY_CONFIG=tidy.cfg
+TIDY_CONFIG := tidy.cfg
 
-IGNORE=.ignore
-KEEP=.keep
+IGNORE := .ignore
+KEEP := .keep
 
-SED_PROG=/tmp/s
+SED_PROG := /tmp/s
 
 #### Rien a modifier apres cette ligne  ######################################
 
 ##############################################################################
 #
-# Les fichiers avec extension .html sont utilises pour creer des fichiers, aux
-# chemins relatifs identiques, dans le repertoire DESTINATION. La creation est
-# faite en remplacant dans un fichier modele tout ce qu'il y a entre
-# START_MARK et STOP_MARK par le contenu du fichier .html.
+# Les fichiers avec extension .html sont utilises pour creer des
+# fichiers, aux chemins relatifs identiques, dans le repertoire
+# DESTINATION. La creation est faite en remplacant dans un fichier
+# modele tout ce qu'il y a entre START_MARK et STOP_MARK par le
+# contenu du fichier .html.
 #
-# Le modele utilise est un fichier, de meme nom de base que TEMPLATE, present
-# dans le repertoire du fichier .html traite, ou dans un des repertoires
-# parents en remontant jusqu'a la racine des sources (meme endroit que ce
-# makefile), ou simplement le fichier TEMPLATE. Le choix est fait dans cet
-# ordre (le premier trouve est utilise).
+# Le modele utilise est un fichier, de meme nom de base que TEMPLATE,
+# present dans le repertoire du fichier .html traite, ou dans un des
+# repertoires parents en remontant jusqu'a la racine des sources (meme
+# endroit que ce makefile), ou simplement le fichier TEMPLATE. Le
+# choix est fait dans cet ordre (le premier trouve est utilise).
 #
-# Les fichiers .html generes sont nettoyes avec tidy en utilisant le fichier
-# de configuration TIDY_CONFIG.
+# Les fichiers .html generes sont nettoyes avec tidy en utilisant le
+# fichier de configuration TIDY_CONFIG.
 # 
-# Les fichiers sans extension .html sont copies tel quel dans le repertoire
-# destination.
+# Les fichiers sans extension .html sont copies tel quel dans le
+# repertoire destination.
 #
-# Certains fichiers peuvent etre ignores completement par le processus (on en
-# fait rien du tout). C'est le cas si :
+# Chaque repertoire peut contenir un fichier IGNORE et un fichier
+# KEEP.
 #
-# * son nom de base est present dans le fichier IGNORE de son repertoire,
+# Le repertoire racine est celui dans lequel se trouve ce makefile.
 #
-# * son chemin relatif a la racine est present dans le fichier IGNORE de la
-#   racine,
+# Certains fichiers sont completement ignores par le processus (on en
+# fait rien du tout). C'est le cas de ce fichier makefile, du fichier
+# TIDY_CONFIG, du fichier TEMPLATE et des fichiers dont :
 #
-# * le chemin de son repertoire (avec le dernier slash) est present dans le
-#   fichier IGNORE de la racine (meme repertoire que ce makefile),
+# * le nom de base est IGNORE, KEEP, ou le nom de base de TEMPLATE,
 #
-# * le nom du fichier contient un espace, une quote simple, une quote double
-#   ou un backslash.
+# * le nom contient un espace, une quote simple, une quote double ou
+#   un backslash,
 #
-# Certains fichiers avec extension .html, peuvent etre copie tels quels (sans
-# subir la transformation utilisant les marques START_MARK et
-# STOP_MARK). C'est le cas si :
+# * le nom correspond à un nom de fichier backup d'Emacs (avec comme
+#   extension le caractere tilde),
 #
-# * son nom de base est present dans le fichier KEEP de son repertoire,
+# * le nom de base est present dans le fichier IGNORE de leur
+#   repertoire,
 #
-# * son chemin relatif a la racine est present dans le fichier KEEP de la
-#   racine,
+# * le chemin (du fichier ou de son repertoire) relatif a un
+#   repertoire est present dans le fichier IGNORE de celui-ci.
 #
-# * le chemin de son repertoire (avec le dernier slash) est present dans le
-#   fichier KEEP de la racine,
+# Certains fichiers avec extension .html, peuvent etre copie tels
+# quels (sans subir la transformation utilisant les marques START_MARK
+# et STOP_MARK). C'est le cas des fichiers dont :
 #
-# Les fichiers TEMPLATE (ou de meme nom de base), makefile et TIDY_CONFIG ne
-# sont pas pris en compte.
+# * le nom de base est present dans le fichier KEEP de leur
+#   repertoire,
 #
-# Les fichiers IGNORE, KEEP et les fichiers de backup d'Emacs (avec extension
-# ~) sont ignores par defaut.
+# * le chemin (du fichier ou de son repertoire) relatif a un
+#   repertoire est present dans le fichier KEEP de celui-ci.
 #
 # La transformation des fichiers a extension .html utilise sed via un
 # programme construit dans SED_PROG.
 #
 ##############################################################################
 
-MAKEFLAGS += -rR
+ifeq ($(VERBOSE),1)
+  Q =
+else
+  Q = @
+endif
 
 .PHONY: clean real-clean check debug list
 
-DEBUG_DEPS=
+MAKEFLAGS += -rR
 
-SOURCE=$(shell pwd)
+DEBUG_DEPS :=
 
-FILES=$(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
+SOURCE := $(shell pwd)
 
-CMD_FILES = \
+# Find all source files (if opt=-v) or all ignored source files
+CMD_FILES := \
   find -H $(SOURCE) -type f -o -type l \
-  | grep -e '/$(notdir $(TEMPLATE))$$' \
-         -e '^$(SOURCE)/makefile$$' \
-         -e '/$(IGNORE)$$' \
-         -e '/$(KEEP)$$' \
-		 $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE) 2>/dev/null)) \
-         -e '~$$' \
+  | grep -e ^$(SOURCE)/makefile$$ \
          -e $(TIDY_CONFIG) \
+         -e $(TEMPLATE) \
+         -e /$(IGNORE)$$ \
+         -e /$(KEEP)$$ \
+         -e /$(notdir $(TEMPLATE))$$ \
 		 -Ee '[ "'\''\]' \
-         $$opt
+         -e ~$$ \
+         $(foreach dir, \
+                   $(shell find $(SOURCE) -name $(IGNORE) -printf "%h "), \
+                   $(addprefix -e $(dir)/,$(addsuffix $$,$(shell cat $(dir)/$(IGNORE))) \
+                                          $(addsuffix /,$(shell cat $(dir)/$(IGNORE))) \
+           )) \
+         $$opt \
+  | sort
 
-CMD_NAMES = \
-  file=$(notdir $@) ; \
-  dir=$(subst $(DESTINATION)/,,$(dir $@))
+# Let pass only source files which should be kept as is
+CMD_KEEP := \
+  grep -q \
+  $(foreach dir, \
+            $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
+            $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell cat $(dir)/$(KEEP))) \
+                                    $(addsuffix /,$(shell cat $(dir)/$(KEEP)))))
 
-CMD_IGNORE = \
-if    grep -xsq "^$$file$$" $$dir$(IGNORE) \
-   || grep -xsq "^$$dir$$file$$" $(SOURCE)/$(IGNORE) \
-   || grep -xsq "^$$dir$$" $(SOURCE)/$(IGNORE) ; then \
-  echo "  IGNORE $$dir$$file" ; \
-  exit ; \
-fi
-
-TEST_KEEP = \
-   grep -xsq "^$$file$$" $$dir$(KEEP) \
-|| grep -xsq "^$$dir$$file$$" $(SOURCE)/$(KEEP) \
-|| grep -xsq "^$$dir$$" $(SOURCE)/$(KEEP) \
-|| ( echo $(SOURCE)/$$dir | grep -sq $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(KEEP) 2>/dev/null)) )
-
-CMD_TIDY = $(shell which tidy)
+CMD_TIDY := $(shell which tidy)
 
 CMD_COPY = \
-echo "    COPY $$dir$$file" ; \
+echo "    COPY $(dir)$(file)" ; \
   mkdir -p $(dir $@) ; \
   cp -d -f $< $@
 
@@ -120,9 +123,9 @@ echo "    COPY $$dir$$file" ; \
 # FIXME: les dependances ne sont pas bonne : si un TEMPLATE nouveau est present le fichier n'est pas recree
 TEMPLATE_TO_USE = \
   `( \
-    n=\`echo $$dir | tr / '\n' | wc -l\` ; \
+    n=\`echo $(dir) | tr / '\n' | wc -l\` ; \
     m=\`basename $(TEMPLATE)\` ; \
-    while test $$n -gt 0 && ! ls -1 \`echo $$dir | cut -d / -f 1-$$n\`/$$m 2>/dev/null ; \
+    while test $$n -gt 0 && ! ls -1 \`echo $(dir) | cut -d / -f 1-$$n\`/$$m 2>/dev/null ; \
     do \
       n=\`expr $$n - 1\`; \
     done ; \
@@ -130,7 +133,7 @@ TEMPLATE_TO_USE = \
   ) | head -1`
 
 CMD_HTML = \
-echo " DO_HTML $$dir$$file" ; \
+echo " DO_HTML ($(TEMPLATE_TO_USE)) $(dir)$(file)" ; \
   mkdir -p $(dir $@) ; \
   \
   echo 's/$(START_MARK)//' >$(SED_PROG) ; \
@@ -156,29 +159,30 @@ echo " DO_HTML $$dir$$file" ; \
 
 # FIXME: tidy empeche les & dans les URL :-(
 #  \
-#  $(CMD_TIDY) -q -config $(TIDY_CONFIG) -f /tmp/$$(echo $$dir$$file.tidylog | tr / _) $@
+#  $(CMD_TIDY) -q -config $(TIDY_CONFIG) -f /tmp/$$(echo $(dir)$(file).tidylog | tr / _) $@
 
-DO_CHECK = \
+file = $(notdir $@)
+dir = $(subst $(DESTINATION)/,,$(dir $@))
+
+DO_CHECK := \
 echo -n "   CHECK " ; \
   which 
 
 DO_HTML = \
-  $(CMD_NAMES) ; \
-  $(CMD_IGNORE) ; \
-  if $(TEST_KEEP) ; then \
+  if echo $< | $(CMD_KEEP) ; then \
     $(CMD_COPY) ; \
   else \
     $(CMD_HTML) ; \
   fi	
 
 DO_COPY = \
-  $(CMD_NAMES) ; \
-  $(CMD_IGNORE) ; \
   $(CMD_COPY)
+
+ALL_FILES := $(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
 
 ##############################################################################
 
-all: $(FILES)
+all: $(ALL_FILES)
 
 debug:
 	@echo "      SOURCE = $(SOURCE)"
@@ -191,26 +195,52 @@ debug:
 	@$(CMD_FILES) > /tmp/ignored
 
 listfiles:
-	@opt=-v ; $(CMD_FILES)
+	$(Q)opt=-v ; $(CMD_FILES)
 
 listignored:
-	@$(CMD_FILES)
+	$(Q)$(CMD_FILES)
 
 $(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(TEMPLATE)
-	@$(DO_HTML)
+	$(Q)$(DO_HTML)
 
 $(DESTINATION)/%:: $(SOURCE)/% $(DEBUG_DEPS)
-	@$(DO_COPY)
+	$(Q)$(DO_COPY)
 
 clean:
-	@find $(SOURCE) -name '*~' -delete
+	$(Q)find $(SOURCE) -name '*~' -delete
 
 real-clean:
-	@rm -rf $(FILES)
+	$(Q)rm -rf $(ALL_FILES)
 
 check:
-	@$(DO_CHECK) tidy
+	$(Q)$(DO_CHECK) tidy
 
 ##############################################################################
 
+# Work garbage
+#tmp_ini = $(1) := 
+#tmp_acc = $(if $($(1)),$(1):=$($(1))/$(2),$(1):=$(2))
+#$(foreach exist, \
+#                      $(foreach x, \
+#                                $(subst /, ,$(dir)), \
+#                                $(eval $(call tmp_acc,path,$(x))) \
+#                                  $(path)), \
+#  $(eval $(call tmp_ini,path))
+#
+#TEST_KEEP := \
+#   grep -xsq "^$(file)$$" $(dir)$(KEEP) \
+#|| grep -xsq "^$(dir)$(file)$$" $(SOURCE)/$(KEEP) \
+#|| grep -xsq "^$(dir)$$" $(SOURCE)/$(KEEP) \
+#|| ( echo $(SOURCE)/$(dir) | grep -sq $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(KEEP) 2>/dev/null)))
+#
+#CMD_KEEP = \
+#	echo $(dir)$(file) ; \
+#	echo \
+#    $(foreach keep, \
+#              $(foreach x, \
+#                        $(subst /, ,$(dir)), \
+#                        $(eval $(call tmp_acc,path,$(x))) \
+#                          $(path)/$(KEEP)), \
+#              $(shell test -e $(SOURCE)/$(keep) && echo $(SOURCE)/$(keep)))
+#
 # End
