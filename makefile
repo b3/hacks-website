@@ -4,12 +4,17 @@ TEMPLATE = $(SOURCE)/Modele.html
 START_MARK := <!-- @DEBUT_CONTENU@ -->
 STOP_MARK := <!-- @FIN_CONTENU@ -->
 
+# DATE_FORMAT should not contain exclamation mark
+DATE_FORMAT := '+%Y/%m/%d %H:%M:%S'
+
 TIDY_CONFIG := tidy.cfg
 
 IGNORE := .ignore
 KEEP := .keep
 
-SED_PROG := /tmp/s
+TMP := /tmp
+
+SED_PROG := $(TMP)/s
 
 #### Rien a modifier apres cette ligne  ######################################
 
@@ -112,28 +117,23 @@ CMD_KEEP := \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell cat $(dir)/$(KEEP))) \
                                     $(addsuffix /,$(shell cat $(dir)/$(KEEP)))))
 
-CMD_TIDY := $(shell which tidy)
+# Find the right template file to use
+tmp_ini = $(1) := 
+tmp_acc = $(if $($(1)),$(1):=$($(1))/$(2),$(1):=$(2))
+CMD_TEMPLATE = \
+  $(lastword $(TEMPLATE) \
+             $(foreach template,\
+                       $(notdir $(TEMPLATE)) \
+                         $(foreach word, \
+                                   $(subst /, ,$(dir)), \
+                                   $(eval $(call tmp_acc,path,$(word))) \
+                                     $(path)/$(notdir $(TEMPLATE))) \
+                         $(eval $(call tmp_ini,path)), \
+                       $(shell test -e $(SOURCE)/$(template) && echo $(template))))
 
-CMD_COPY = \
-echo "    COPY $(dir)$(file)" ; \
-  mkdir -p $(dir $@) ; \
-  cp -d -f $< $@
-
-# FIXME: super lent faudrait faire faire le travail par make plutot que sh
-# FIXME: les dependances ne sont pas bonne : si un TEMPLATE nouveau est present le fichier n'est pas recree
-TEMPLATE_TO_USE = \
-  `( \
-    n=\`echo $(dir) | tr / '\n' | wc -l\` ; \
-    m=\`basename $(TEMPLATE)\` ; \
-    while test $$n -gt 0 && ! ls -1 \`echo $(dir) | cut -d / -f 1-$$n\`/$$m 2>/dev/null ; \
-    do \
-      n=\`expr $$n - 1\`; \
-    done ; \
-    echo $(TEMPLATE) \
-  ) | head -1`
-
+# Replace content in template file by dependency content
 CMD_HTML = \
-echo " DO_HTML ($(TEMPLATE_TO_USE)) $(dir)$(file)" ; \
+echo " DO_HTML ($(CMD_TEMPLATE)) $(dir)$(file)" ; \
   mkdir -p $(dir $@) ; \
   \
   echo 's/$(START_MARK)//' >$(SED_PROG) ; \
@@ -149,17 +149,24 @@ echo " DO_HTML ($(TEMPLATE_TO_USE)) $(dir)$(file)" ; \
   echo r $< >>$(SED_PROG) ; \
   echo 'D' >>$(SED_PROG) ; \
   echo ':fin' >>$(SED_PROG) ; \
-  sed -f $(SED_PROG) $(TEMPLATE_TO_USE) > $@ ; \
-  \
+  sed -f $(SED_PROG) $(CMD_TEMPLATE) > $@ ; \
   sed -i -e 's/^/\#PASS_1\# /g' $(SED_PROG) ; \
+  \
   echo s!@ROOT@!$(shell echo $(dir $<) | sed -e 's!$(SOURCE)!@!' -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!')!g >>$(SED_PROG) ; \
-  echo s!@DATE@!$(shell date '+%Y/%m/%d %H:%M:%S')!g >>$(SED_PROG) ; \
-  echo s!@MTIME@!$(shell date -r $< '+%Y/%m/%d %H:%M:%S')!g >>$(SED_PROG) ; \
-  sed -i -f $(SED_PROG) $@ 
+  echo s!@DATE@!$(shell date $(DATE_FORMAT))!g >>$(SED_PROG) ; \
+  echo s!@MTIME@!$(shell date -r $< $(DATE_FORMAT))!g >>$(SED_PROG) ; \
+  sed -i -f $(SED_PROG) $@ ; \
+  \
+  $(CMD_TIDY) -m -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG)) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog) $@ || true
 
 # FIXME: tidy empeche les & dans les URL :-(
-#  \
-#  $(CMD_TIDY) -q -config $(TIDY_CONFIG) -f /tmp/$$(echo $(dir)$(file).tidylog | tr / _) $@
+
+CMD_TIDY := $(shell which tidy)
+
+CMD_COPY = \
+echo "    COPY $(dir)$(file)" ; \
+  mkdir -p $(dir $@) ; \
+  cp -d -f $< $@
 
 file = $(notdir $@)
 dir = $(subst $(DESTINATION)/,,$(dir $@))
@@ -200,6 +207,7 @@ listfiles:
 listignored:
 	$(Q)$(CMD_FILES)
 
+# FIXME: les dependances ne sont pas bonne. Si un TEMPLATE nouveau est present le fichier n'est pas recree
 $(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(TEMPLATE)
 	$(Q)$(DO_HTML)
 
