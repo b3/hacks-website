@@ -103,8 +103,8 @@ CMD_FILES := \
          -e ~$$ \
          $(foreach dir, \
                    $(shell find $(SOURCE) -name $(IGNORE) -printf "%h "), \
-                   $(addprefix -e $(dir)/,$(addsuffix $$,$(shell cat $(dir)/$(IGNORE))) \
-                                          $(addsuffix /,$(shell cat $(dir)/$(IGNORE))) \
+                   $(addprefix -e $(dir)/,$(addsuffix $$,$(shell sed 's/\/$$//g' $(dir)/$(IGNORE))) \
+                                          $(addsuffix /,$(shell sed 's/\/$$//g' $(dir)/$(IGNORE))) \
            )) \
          $$opt \
   | sort
@@ -114,8 +114,8 @@ CMD_KEEP := \
   grep -q \
   $(foreach dir, \
             $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
-            $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell cat $(dir)/$(KEEP))) \
-                                    $(addsuffix /,$(shell cat $(dir)/$(KEEP)))))
+            $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell sed 's/\/$$//g' $(dir)/$(KEEP))) \
+                                    $(addsuffix /,$(shell sed 's/\/$$//g' $(dir)/$(KEEP)))))
 
 # Find the right template file to use
 tmp_ini = $(1) := 
@@ -133,7 +133,6 @@ CMD_TEMPLATE = \
 
 # Replace content in template file by dependency content
 CMD_HTML = \
-echo " DO_HTML ($(CMD_TEMPLATE)) $(dir)$(file)" ; \
   mkdir -p $(dir $@) ; \
   \
   echo 's/$(START_MARK)//' >$(SED_PROG) ; \
@@ -164,7 +163,6 @@ echo " DO_HTML ($(CMD_TEMPLATE)) $(dir)$(file)" ; \
 CMD_TIDY := $(shell which tidy)
 
 CMD_COPY = \
-echo "    COPY $(dir)$(file)" ; \
   mkdir -p $(dir $@) ; \
   cp -d -f $< $@
 
@@ -172,17 +170,20 @@ file = $(notdir $@)
 dir = $(subst $(DESTINATION)/,,$(dir $@))
 
 DO_CHECK := \
-echo -n "   CHECK " ; \
+echo -n "    CHECK " ; \
   which 
 
 DO_HTML = \
   if echo $< | $(CMD_KEEP) ; then \
+    echo "KEEP_COPY $(dir)$(file)" ; \
     $(CMD_COPY) ; \
   else \
+    echo -e "  DO_HTML $(dir)$(file)\n          (with template $(CMD_TEMPLATE))" ; \
     $(CMD_HTML) ; \
   fi	
 
 DO_COPY = \
+echo "     COPY $(dir)$(file)" ; \
   $(CMD_COPY)
 
 ALL_FILES := $(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
