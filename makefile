@@ -43,6 +43,9 @@ SED_PROG=/tmp/s
 # * le chemin de son repertoire (avec le dernier slash) est present dans le
 #   fichier IGNORE de la racine (meme repertoire que ce makefile),
 #
+# * le nom du fichier contient un espace, une quote simple, une quote double
+#   ou un backslash.
+#
 # Certains fichiers avec extension .html, peuvent etre copie tels quels (sans
 # subir la transformation utilisant les marques START_MARK et
 # STOP_MARK). C'est le cas si :
@@ -66,27 +69,31 @@ SED_PROG=/tmp/s
 #
 ##############################################################################
 
+MAKEFLAGS += -rR
+
 .PHONY: clean real-clean check debug list
 
 DEBUG_DEPS=
 
 SOURCE=$(shell pwd)
 
-FILES=$(subst \
-  $(SOURCE)/, \
-  $(DESTINATION)/, \
-  $(shell find -H $(SOURCE) -type f -o -type l \
-          | grep -v -e '/$(notdir $(TEMPLATE))$$' \
-                    -e '^$(SOURCE)/makefile$$' \
-                    -e '/$(IGNORE)$$' \
-                    -e '/$(KEEP)$$' \
-					$(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE) 2>/dev/null)) \
-                    -e '~$$' \
-                    -e $(TIDY_CONFIG)))
+FILES=$(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
+
+CMD_FILES = \
+  find -H $(SOURCE) -type f -o -type l \
+  | grep -e '/$(notdir $(TEMPLATE))$$' \
+         -e '^$(SOURCE)/makefile$$' \
+         -e '/$(IGNORE)$$' \
+         -e '/$(KEEP)$$' \
+		 $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE) 2>/dev/null)) \
+         -e '~$$' \
+         -e $(TIDY_CONFIG) \
+		 -Ee '[ "'\''\]' \
+         $$opt
 
 CMD_NAMES = \
-  file=$(notdir $<) ; \
-  dir=$(subst $(SOURCE)/,,$(dir $<))
+  file=$(notdir $@) ; \
+  dir=$(subst $(DESTINATION)/,,$(dir $@))
 
 CMD_IGNORE = \
 if    grep -xsq "^$$file$$" $$dir$(IGNORE) \
@@ -144,6 +151,7 @@ echo " DO_HTML $$dir$$file" ; \
   sed -i -e 's/^/\#PASS_1\# /g' $(SED_PROG) ; \
   echo s!@ROOT@!$(shell echo $(dir $<) | sed -e 's!$(SOURCE)!@!' -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!')!g >>$(SED_PROG) ; \
   echo s!@DATE@!$(shell date '+%Y/%m/%d %H:%M:%S')!g >>$(SED_PROG) ; \
+  echo s!@MTIME@!$(shell date -r $< '+%Y/%m/%d %H:%M:%S')!g >>$(SED_PROG) ; \
   sed -i -f $(SED_PROG) $@ 
 
 # FIXME: tidy empeche les & dans les URL :-(
@@ -178,10 +186,15 @@ debug:
 	@echo "    TEMPLATE = $(TEMPLATE)"
 	@echo "  START_MARK = $(START_MARK)"
 	@echo "   STOP_MARK = $(STOP_MARK)"
-	@echo "         TMP = $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(IGNORE) 2>/dev/null)) "
+	@echo "       FILES = see /tmp/files and /tmp/ignored"
+	@opt=-v ; $(CMD_FILES) >/tmp/files
+	@$(CMD_FILES) > /tmp/ignored
 
-list:
-	@for i in $(FILES) ; do echo $$i; done
+listfiles:
+	@opt=-v ; $(CMD_FILES)
+
+listignored:
+	@$(CMD_FILES)
 
 $(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(TEMPLATE)
 	@$(DO_HTML)
