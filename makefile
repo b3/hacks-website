@@ -1,22 +1,55 @@
-DESTINATION := /tmp/ws
-TEMPLATE = $(SOURCE)/Modele.html
+# Settings may be put in this file (may be fixed on make commande line)
+ifeq ($(origin SETTINGS), undefined)
+SETTINGS := .settings
+endif
 
+# Processed files wil be copied in this directory
+ifeq ($(origin DESTINATION), undefined)
+DESTINATION := /tmp/ws
+endif
+
+# HTML files created will be based on this template file
+ifeq ($(origin TEMPLATE), undefined)
+TEMPLATE = $(SOURCE)/Modele.html
+endif
+
+# Template content between these marks will be replaced by file content
+ifeq ($(origin START_MARK), undefined)
 START_MARK := <!-- @DEBUT_CONTENU@ -->
 STOP_MARK := <!-- @FIN_CONTENU@ -->
+endif
 
 # DATE_FORMAT should not contain exclamation mark
-DATE_FORMAT := '+%Y/%m/%d %H:%M:%S'
+ifeq ($(origin DATE_FORMAT), undefined)
+DATE_FORMAT ?= '+%Y/%m/%d %H:%M:%S'
+endif
 
-TIDY_CONFIG := tidy.cfg
+# Tidy config file
+ifeq ($(origin TIDY_CONFIG), undefined)
+TIDY_CONFIG := $(HOME)/.tidyrc
+endif
 
+# Basename of files containing filename specification to ignore
+ifeq ($(origin IGNORE), undefined)
 IGNORE := .ignore
+endif
+
+# Basename of files containing filename specification to keep as is
+ifeq ($(origin KEEP), undefined)
 KEEP := .keep
+endif
 
+# Temporary directory
+ifeq ($(origin TEMP), undefined)
 TMP := /tmp
+endif
 
+# Temporary sed program
+ifeq ($(origin SED_PROG), undefined)
 SED_PROG := $(TMP)/s
+endif
 
-#### Rien a modifier apres cette ligne  ######################################
+#### Nothing to change after this line #######################################
 
 ##############################################################################
 #
@@ -45,7 +78,8 @@ SED_PROG := $(TMP)/s
 #
 # Certains fichiers sont completement ignores par le processus (on en
 # fait rien du tout). C'est le cas de ce fichier makefile, du fichier
-# TIDY_CONFIG, du fichier TEMPLATE et des fichiers dont :
+# TIDY_CONFIG, du fichier TEMPLATE, du fichier SETTINGS et des
+# fichiers dont :
 #
 # * le nom de base est IGNORE, KEEP, ou le nom de base de TEMPLATE,
 #
@@ -76,19 +110,24 @@ SED_PROG := $(TMP)/s
 #
 ##############################################################################
 
+# If settings file exist read it now!
+ifeq ($(shell ls $(SETTINGS) 2>/dev/null),$(SETTINGS))
+include $(SETTINGS)
+endif
+
+# By default do not show executed command
 ifeq ($(VERBOSE),1)
   Q =
 else
   Q = @
 endif
 
-.PHONY: clean real-clean check debug list
-
-MAKEFLAGS += -rR
-
-DEBUG_DEPS :=
-
+# Absolute path of source files (where this makefile is executed)
 SOURCE := $(shell pwd)
+
+# Try to improve performance
+MAKEFLAGS += -rR
+.PHONY: clean real-clean check debug list-files list-ignored
 
 # Find all source files (if opt=-v) or all ignored source files
 CMD_FILES := \
@@ -96,6 +135,7 @@ CMD_FILES := \
   | grep -e ^$(SOURCE)/makefile$$ \
          -e $(TIDY_CONFIG) \
          -e $(TEMPLATE) \
+         -e $(SETTINGS) \
          -e /$(IGNORE)$$ \
          -e /$(KEEP)$$ \
          -e /$(notdir $(TEMPLATE))$$ \
@@ -132,6 +172,7 @@ CMD_TEMPLATE = \
                        $(shell test -e $(SOURCE)/$(template) && echo $(template))))
 
 # Replace content in template file by dependency content
+#   FIXME: tidy empeche les & dans les URL :-(
 CMD_HTML = \
   mkdir -p $(dir $@) ; \
   \
@@ -156,37 +197,45 @@ CMD_HTML = \
   echo s!@MTIME@!$(shell date -r $< $(DATE_FORMAT))!g >>$(SED_PROG) ; \
   sed -i -f $(SED_PROG) $@ ; \
   \
-  $(CMD_TIDY) -m -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG)) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog) $@ || true
+  $(CMD_TIDY) $@ || true
 
-# FIXME: tidy empeche les & dans les URL :-(
+# Tidy HTML file 
+#   FIXME: avec := c'est plus rapide mais c'est une seule fois
+CMD_TIDY = $(shell which tidy) -m -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG)) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog)
 
-CMD_TIDY := $(shell which tidy)
-
+# Copy file in existing destination directory and preserve symbolic link
 CMD_COPY = \
-  mkdir -p $(dir $@) ; \
+  mkdir -p $(dir $@) && \
   cp -d -f $< $@
 
 file = $(notdir $@)
 dir = $(subst $(DESTINATION)/,,$(dir $@))
 
+# Check if a command is available
 DO_CHECK := \
 echo -n "    CHECK " ; \
   which 
 
+# Process HTML file
 DO_HTML = \
   if echo $< | $(CMD_KEEP) ; then \
     echo "KEEP_COPY $(dir)$(file)" ; \
     $(CMD_COPY) ; \
   else \
-    echo -e "  DO_HTML $(dir)$(file)\n          (with template $(CMD_TEMPLATE))" ; \
+    /bin/echo -e "  DO_HTML $(dir)$(file)\n          (with template $(CMD_TEMPLATE))" ; \
     $(CMD_HTML) ; \
   fi	
 
+# Copy file
 DO_COPY = \
 echo "     COPY $(dir)$(file)" ; \
   $(CMD_COPY)
 
+# List of all source files to process
 ALL_FILES := $(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
+
+# Debug stuff
+DEBUG_DEPS :=
 
 ##############################################################################
 
@@ -202,14 +251,14 @@ debug:
 	@opt=-v ; $(CMD_FILES) >/tmp/files
 	@$(CMD_FILES) > /tmp/ignored
 
-listfiles:
+list-files:
 	$(Q)opt=-v ; $(CMD_FILES)
 
-listignored:
+list-ignored:
 	$(Q)$(CMD_FILES)
 
 # FIXME: les dependances ne sont pas bonne. Si un TEMPLATE nouveau est present le fichier n'est pas recree
-$(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(TEMPLATE)
+$(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(CMD_TEMPLATE)
 	$(Q)$(DO_HTML)
 
 $(DESTINATION)/%:: $(SOURCE)/% $(DEBUG_DEPS)
@@ -224,32 +273,4 @@ real-clean:
 check:
 	$(Q)$(DO_CHECK) tidy
 
-##############################################################################
-
-# Work garbage
-#tmp_ini = $(1) := 
-#tmp_acc = $(if $($(1)),$(1):=$($(1))/$(2),$(1):=$(2))
-#$(foreach exist, \
-#                      $(foreach x, \
-#                                $(subst /, ,$(dir)), \
-#                                $(eval $(call tmp_acc,path,$(x))) \
-#                                  $(path)), \
-#  $(eval $(call tmp_ini,path))
-#
-#TEST_KEEP := \
-#   grep -xsq "^$(file)$$" $(dir)$(KEEP) \
-#|| grep -xsq "^$(dir)$(file)$$" $(SOURCE)/$(KEEP) \
-#|| grep -xsq "^$(dir)$$" $(SOURCE)/$(KEEP) \
-#|| ( echo $(SOURCE)/$(dir) | grep -sq $(patsubst %, -e '^$(SOURCE)/%', $(shell cat $(SOURCE)/$(KEEP) 2>/dev/null)))
-#
-#CMD_KEEP = \
-#	echo $(dir)$(file) ; \
-#	echo \
-#    $(foreach keep, \
-#              $(foreach x, \
-#                        $(subst /, ,$(dir)), \
-#                        $(eval $(call tmp_acc,path,$(x))) \
-#                          $(path)/$(KEEP)), \
-#              $(shell test -e $(SOURCE)/$(keep) && echo $(SOURCE)/$(keep)))
-#
 # End
