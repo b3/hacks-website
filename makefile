@@ -150,12 +150,15 @@ CMD_FILES := \
   | sort
 
 # Let pass only source files which should be kept as is
+#   Last protected space is there to please grep in the case there is no files
+#   to keep
 CMD_KEEP := \
   grep -q \
   $(foreach dir, \
             $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell sed 's/\/$$//g' $(dir)/$(KEEP))) \
-                                    $(addsuffix /,$(shell sed 's/\/$$//g' $(dir)/$(KEEP)))))
+                                    $(addsuffix /,$(shell sed 's/\/$$//g' $(dir)/$(KEEP))))) \
+  ' '
 
 # Find the right template file to use
 tmp_ini = $(1) := 
