@@ -1,4 +1,4 @@
-# Settings may be put in this file (may be fixed on make commande line)
+# Settings may be put in this file (may be fixed on command line)
 ifeq ($(origin SETTINGS), undefined)
 SETTINGS := .settings
 endif
@@ -26,7 +26,7 @@ endif
 
 # Tidy config file
 ifeq ($(origin TIDY_CONFIG), undefined)
-TIDY_CONFIG := $(HOME)/.tidyrc
+TIDY_CONFIG := $(SOURCE)/.tidyrc
 endif
 
 # Basename of files containing filename specification to ignore
@@ -37,6 +37,11 @@ endif
 # Basename of files containing filename specification to keep as is
 ifeq ($(origin KEEP), undefined)
 KEEP := .keep
+endif
+
+# Show exact executed commands only if VERBOSE is set to 1
+ifeq ($(origin VERBOSE), undefined)
+VERBOSE := 0
 endif
 
 # Temporary directory
@@ -276,4 +281,6 @@ real-clean:
 check:
 	$(Q)$(DO_CHECK) tidy
 
-# End
+# Local Variables:
+# tab-width: 4
+# End:
