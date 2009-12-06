@@ -1,7 +1,13 @@
 * Ajouter la possibilité d'exécuter les makefiles dans les répertoires s'il y
   en a (cf Makefile du noyau linux)
 
+* Vérifier l'existence des fichiers de config (.tidyrc, etc.) avant de faire
+   quoi que ce soit
+
 * Traduire la doc interne en anglais, si possible dans un format POD
   facilement extractible
+
+* Ajouter la possibilité d'enfiler des filtres (après, avant ou en
+   remplacement de tidyrc)
 
 * Fixer les BUGS (cf FIXME)
