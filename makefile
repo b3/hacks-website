@@ -122,7 +122,7 @@ endif
 ##############################################################################
 
 # If settings file exists read it now!
-ifeq ($(shell ls $(SETTINGS) 2>/dev/null),$(SETTINGS))
+ifeq ($(wildcard $(SETTINGS)),$(SETTINGS))
 include $(SETTINGS)
 endif
 
@@ -134,11 +134,19 @@ else
 endif
 
 # Absolute path of source files (where this makefile is executed)
-SOURCE := $(shell pwd)
+SOURCE := $(realpath .)
 
 # Try to improve performance
 MAKEFLAGS += -rR
 .PHONY: clean real-clean check debug list-files list-ignored
+
+# Useful variables for commands (need to be classical recursively expanded)
+file = $(notdir $@)
+dir = $(subst $(DESTINATION)/,,$(dir $@))
+root = $(shell echo $(subst $(SOURCE),@,$(dir $<)) | sed -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!')
+date = $(shell date $(DATE_FORMAT))
+mtime = $(shell date -r $< $(DATE_FORMAT))
+exist = $(subst $(1)/,,$(wildcard $(1)/$(2)))
 
 # Ouput all source files (if opt=-v) or all ignored source files
 CMD_FILES := \
@@ -169,7 +177,7 @@ CMD_KEEP := \
             $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell sed 's/\/$$//g' $(dir)/$(KEEP))) \
                                     $(addsuffix /,$(shell sed 's/\/$$//g' $(dir)/$(KEEP))))) \
- # embed a space in CMD_KEEP
+ # comment present to embed a space in CMD_KEEP
 
 # Output the right template file path to use
 tmp_ini = $(1) := 
@@ -183,7 +191,7 @@ CMD_TEMPLATE = \
                                    $(eval $(call tmp_acc,path,$(word))) \
                                      $(path)/$(notdir $(TEMPLATE))) \
                          $(eval $(call tmp_ini,path)), \
-                       $(shell test -e $(SOURCE)/$(template) && echo $(template))))
+                       $(call exist,$(SOURCE),$(template))))
 
 # FIXME: doit être découpé en filtre et création de destination
 # Replace content in template file by dependency content
@@ -223,13 +231,6 @@ CMD_TIDY = $(shell which tidy) -m -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG))
 CMD_COPY = \
   mkdir -p $(dir $@) && \
   cp -l -d -f $< $@ 2>/dev/null 1>&2 || cp -d -f $< $@
-
-# Useful variables for commands (need to be classical recursively expanded)
-file = $(notdir $@)
-dir = $(subst $(DESTINATION)/,,$(dir $@))
-root = $(shell echo $(subst $(SOURCE),@,$(dir $<)) | sed -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!')
-date = $(shell date $(DATE_FORMAT))
-mtime = $(shell date -r $< $(DATE_FORMAT))
 
 # Check if a command is available
 DO_CHECK := \
