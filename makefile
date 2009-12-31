@@ -26,7 +26,7 @@ endif
 
 # Tidy config file
 ifeq ($(origin TIDY_CONFIG), undefined)
-TIDY_CONFIG := $(SOURCE)/.tidyrc
+TIDY_CONFIG := $(HOME)/.tidyrc
 endif
 
 # Basename of files containing filename specification to ignore
@@ -115,16 +115,22 @@ endif
 #
 ##############################################################################
 
-# If settings file exist read it now!
+##############################################################################
+#
+# Developer code conventions
+#
+##############################################################################
+
+# If settings file exists read it now!
 ifeq ($(shell ls $(SETTINGS) 2>/dev/null),$(SETTINGS))
 include $(SETTINGS)
 endif
 
 # By default do not show executed command
 ifeq ($(VERBOSE),1)
-  Q =
+  Q :=
 else
-  Q = @
+  Q := @
 endif
 
 # Absolute path of source files (where this makefile is executed)
@@ -134,7 +140,7 @@ SOURCE := $(shell pwd)
 MAKEFLAGS += -rR
 .PHONY: clean real-clean check debug list-files list-ignored
 
-# Find all source files (if opt=-v) or all ignored source files
+# Ouput all source files (if opt=-v) or all ignored source files
 CMD_FILES := \
   find -H $(SOURCE) -type f -o -type l \
   | grep -e ^$(SOURCE)/makefile$$ \
@@ -155,17 +161,17 @@ CMD_FILES := \
   | sort
 
 # Let pass only source files which should be kept as is
-#   Last protected space is there to please grep in the case there is no files
-#   to keep
+#   Last space before the comment should stay present to please grep in the
+#   case there is no files to keep
 CMD_KEEP := \
   grep -q \
   $(foreach dir, \
             $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell sed 's/\/$$//g' $(dir)/$(KEEP))) \
                                     $(addsuffix /,$(shell sed 's/\/$$//g' $(dir)/$(KEEP))))) \
-  ' '
+ # embed a space in CMD_KEEP
 
-# Find the right template file to use
+# Output the right template file path to use
 tmp_ini = $(1) := 
 tmp_acc = $(if $($(1)),$(1):=$($(1))/$(2),$(1):=$(2))
 CMD_TEMPLATE = \
@@ -179,6 +185,7 @@ CMD_TEMPLATE = \
                          $(eval $(call tmp_ini,path)), \
                        $(shell test -e $(SOURCE)/$(template) && echo $(template))))
 
+# FIXME: doit être découpé en filtre et création de destination
 # Replace content in template file by dependency content
 #   FIXME: tidy empeche les & dans les URL :-(
 CMD_HTML = \
@@ -200,13 +207,14 @@ CMD_HTML = \
   sed -f $(SED_PROG) $(CMD_TEMPLATE) > $@ ; \
   sed -i -e 's/^/\#PASS_1\# /g' $(SED_PROG) ; \
   \
-  echo s!@ROOT@!$(shell echo $(dir $<) | sed -e 's!$(SOURCE)!@!' -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!')!g >>$(SED_PROG) ; \
-  echo s!@DATE@!$(shell date $(DATE_FORMAT))!g >>$(SED_PROG) ; \
-  echo s!@MTIME@!$(shell date -r $< $(DATE_FORMAT))!g >>$(SED_PROG) ; \
+  echo s!@ROOT@!$(root)!g >>$(SED_PROG) ; \
+  echo s!@DATE@!$(date)!g >>$(SED_PROG) ; \
+  echo s!@MTIME@!$(mtime)!g >>$(SED_PROG) ; \
   sed -i -f $(SED_PROG) $@ ; \
   \
   $(CMD_TIDY) $@ || true
 
+# FIXME: doit être un filtre
 # Tidy HTML file 
 #   FIXME: avec := c'est plus rapide mais c'est une seule fois
 CMD_TIDY = $(shell which tidy) -m -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG)) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog)
@@ -214,10 +222,14 @@ CMD_TIDY = $(shell which tidy) -m -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG))
 # Copy file in existing destination directory and preserve symbolic link
 CMD_COPY = \
   mkdir -p $(dir $@) && \
-  cp -d -f $< $@
+  cp -l -d -f $< $@ 2>/dev/null 1>&2 || cp -d -f $< $@
 
+# Useful variables for commands (need to be classical recursively expanded)
 file = $(notdir $@)
 dir = $(subst $(DESTINATION)/,,$(dir $@))
+root = $(shell echo $(subst $(SOURCE),@,$(dir $<)) | sed -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!')
+date = $(shell date $(DATE_FORMAT))
+mtime = $(shell date -r $< $(DATE_FORMAT))
 
 # Check if a command is available
 DO_CHECK := \
