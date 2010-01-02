@@ -9,9 +9,7 @@ DESTINATION := /tmp/ws
 endif
 
 # HTML files created will be based on this template file
-ifeq ($(origin TEMPLATE), undefined)
-TEMPLATE := $(SOURCE)/Modele.html
-endif
+TEMPLATE ?= $(SOURCE)/Modele.html
 
 # Template content between these marks will be replaced by file content
 ifeq ($(origin START_MARK), undefined)
