@@ -163,6 +163,9 @@ endif
 #
 ##############################################################################
 
+# Absolute path of source files (where this makefile is executed)
+SOURCE := $(CURDIR)
+
 # If settings file exists read it now!
 ifeq ($(wildcard $(SETTINGS)),$(SETTINGS))
 include $(SETTINGS)
@@ -177,9 +180,6 @@ ifeq ($(VERBOSE),1)
 else
   Q := @
 endif
-
-# Absolute path of source files (where this makefile is executed)
-SOURCE := $(CURDIR)
 
 # Try to improve performance
 MAKEFLAGS += -rR
