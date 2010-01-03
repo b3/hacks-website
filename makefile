@@ -1,3 +1,5 @@
+#!/usr/bin/make -f
+
 # Settings may be put in this file (may be fixed on command line)
 ifeq ($(origin SETTINGS), undefined)
 SETTINGS := .settings
@@ -312,9 +314,14 @@ CMD_COPY = \
 ##############################################################################
 
 # Check if a command is available
-DO_CHECK := \
+DO_CHECK_CMD := \
 echo -n "    CHECK " ; \
   which 
+
+# Check if a file exist (must use through call)
+DO_CHECK_FILE = \
+echo "    CHECK $(1)" ; \
+  $(if $(wildcard $(1)),true,false)
 
 # Process source (HTML) file
 DO_HTML = \
@@ -391,11 +398,14 @@ real-clean:
 	$(Q)rm -rf $(ALL_FILES)
 
 check:
-	$(Q)$(DO_CHECK) date
-	$(Q)$(DO_CHECK) find
-	$(Q)$(DO_CHECK) perl
-	$(Q)$(DO_CHECK) sed
-	$(Q)$(DO_CHECK) tidy
+	$(Q)$(DO_CHECK_CMD) date
+	$(Q)$(DO_CHECK_CMD) find
+	$(Q)$(DO_CHECK_CMD) perl
+	$(Q)$(DO_CHECK_CMD) sed
+	$(Q)$(DO_CHECK_CMD) tidy
+	$(Q)$(DO_CHECK_CMD) true
+	$(Q)$(DO_CHECK_CMD) false
+	$(Q)$(call DO_CHECK_FILE,$(TEMPLATE))
 
 # Local Variables:
 # tab-width: 4
