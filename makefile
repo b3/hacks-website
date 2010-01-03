@@ -306,7 +306,7 @@ tmp_keep := \
               $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix /,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix /,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))))
-CMD_KEEP := $(if $(value tmp_keep),$(tmp_keep),false)
+CMD_KEEP := $(if $(value tmp_keep),grep -q $(tmp_keep),false)
 
 # Output the right template file path to use
 tmp_ini = $(1) := 
