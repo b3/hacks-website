@@ -299,15 +299,14 @@ CMD_FILES := \
 # Let pass only source files which should be kept as is
 #   Last space before the comment should stay present to please grep in the
 #   case there is no files to keep
-CMD_KEEP := \
-  grep -q \
-  $(foreach dir, \
+tmp_keep := \
+ $(foreach dir, \
             $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix /,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
-              $(addprefix -e ^$(dir)/,$(addsuffix /,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP)))))) \
- # comment present to embed a space in CMD_KEEP '
+              $(addprefix -e ^$(dir)/,$(addsuffix /,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))))
+CMD_KEEP := $(if $(value tmp_keep),$(tmp_keep),false)
 
 # Output the right template file path to use
 tmp_ini = $(1) := 
@@ -387,16 +386,18 @@ echo "     COPY $(dir)$(file)" ; \
 
 # List of auxiliary programs used
 ALL_PROGS := $(SED_PROG) $(PERL_PROG)
+PROGS = $(if $(value HOOK_PROGS),$(HOOK_PROGS),$(ALL_PROGS))
 
 # List of all source files to process
 ALL_FILES := $(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
+FILES = $(if $(value HOOK_FILES),$(HOOK_FILES),$(ALL_FILES))
 
 # Debug stuff
 DEBUG_DEPS :=
 
 ##############################################################################
 
-all: check $(ALL_PROGS) $(ALL_FILES)
+all: check $(PROGS) $(FILES)
 
 debug:
 	@echo "      SOURCE = $(SOURCE)"
@@ -414,8 +415,9 @@ debug:
 	@echo "    SED_PROG = $(SED_PROG)"
 	@echo "   PERL_PROG = $(PERL_PROG)"
 	@echo "       SHELL = $(SHELL)"
-	@echo "       FILES = see /tmp/files and /tmp/ignored"
+	@echo "       FILES = see /tmp/files, /tmp/ignored and /tmp/gen"
 	@opt=-v ; $(CMD_FILES) >/tmp/files
+	@echo "$(FILES)" | tr ' ' '\n' >/tmp/gen
 	@$(CMD_FILES) > /tmp/ignored
 
 $(SED_PROG):
@@ -429,6 +431,9 @@ list-files:
 
 list-ignored:
 	$(Q)$(CMD_FILES)
+
+list-gen:
+	$(Q)echo "$(FILES)" | tr ' ' '\n'
 
 # FIXME: les dependances ne sont pas bonne. Si un TEMPLATE nouveau est present le fichier n'est pas recree
 $(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(CMD_TEMPLATE)
