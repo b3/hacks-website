@@ -75,8 +75,29 @@ endif
 # endroit que ce makefile), ou simplement le fichier TEMPLATE. Le
 # choix est fait dans cet ordre (le premier trouve est utilise).
 #
+# La transformation des fichiers a extension .html utilise perl via un
+# programme construit dans PERL_PROG.
+#
+# Cette transformation remplace certaines chaines trouvees dans le
+# fichier source :
+#
+# * @DIR@ par le chemin relatif a la racine du repertoire du fichier source
+#
+# * @FILE@ par le nom de base du fichier source
+#
+# * @ROOT@ par un chemin relatif vers le repertoire racine
+#
+# * @DATE@ par la date courante en respectant le format DATE_FORMAT
+#
+# * @MTIME@ par la date de derniere modification du fichier source
+#
+# D'autres transformation de chaines peuvent etre effectues via HOOK_MACROS.
+#
 # Les fichiers .html generes sont nettoyes avec tidy en utilisant le
 # fichier de configuration TIDY_CONFIG.
+#
+# Il est possible de filtrer le contenu avant la transformation via
+# HOOK_BEFORE, ou apres (mais avant tidy) via HOOK_AFTER.
 # 
 # Les fichiers sans extension .html sont copies tel quel dans le
 # repertoire destination.
@@ -102,8 +123,15 @@ endif
 # * le nom de base est present dans le fichier IGNORE de leur
 #   repertoire,
 #
+# * le nom de base correspond a un motif present dans un fichier
+#   IGNORE d'un repertoire en dessous de leur repertoire,
+#
 # * le chemin (du fichier ou de son repertoire) relatif a un
-#   repertoire est present dans le fichier IGNORE de celui-ci.
+#   repertoire est present dans le fichier IGNORE de celui-ci,
+#
+# * le chemin (du fichier ou de son repertoire) relatif a un
+#   repertoire correspond a un motif present dans un fichier IGNORE
+#   d'un repertoire situe en dessous de celui-la.
 #
 # Certains fichiers avec extension .html, peuvent etre copie tels
 # quels (sans subir la transformation utilisant les marques START_MARK
@@ -112,11 +140,20 @@ endif
 # * le nom de base est present dans le fichier KEEP de leur
 #   repertoire,
 #
-# * le chemin (du fichier ou de son repertoire) relatif a un
-#   repertoire est present dans le fichier KEEP de celui-ci.
+# * le nom de base correspond a un motif present dans un fichier
+#   KEEP d'un repertoire en dessous de leur repertoire,
 #
-# La transformation des fichiers a extension .html utilise sed via un
-# programme construit dans SED_PROG.
+# * le chemin (du fichier ou de son repertoire) relatif a un
+#   repertoire est present dans le fichier KEEP de celui-ci,
+#
+# * le chemin (du fichier ou de son repertoire) relatif a un
+#   repertoire correspond a un motif present dans un fichier KEEP
+#   d'un repertoire situe en dessous de celui-la.
+#
+# Les motifs pour la designation des fichiers a ignorer ou conserver
+# tel quel utilisent 2 caracteres jokers : `*` remplace n'importe
+# quelle suite de caracteres (y compris la suite vide) et `?` remplace
+# un caractere quelconque.
 #
 ##############################################################################
 
@@ -130,6 +167,23 @@ endif
 ifeq ($(wildcard $(SETTINGS)),$(SETTINGS))
 include $(SETTINGS)
 endif
+
+# What shell to use
+SHELL = /bin/bash
+
+# By default do not show executed command
+ifeq ($(VERBOSE),1)
+  Q :=
+else
+  Q := @
+endif
+
+# Absolute path of source files (where this makefile is executed)
+SOURCE := $(CURDIR)
+
+# Try to improve performance
+MAKEFLAGS += -rR
+.PHONY: clean real-clean check debug list-files list-ignored $(SED_PROG) $(PERL_PROG)
 
 # Sed script to include source into template (not used anymore)
 define SED_SCRIPT
@@ -208,48 +262,37 @@ close(T);
 endef
 export PERL_SCRIPT
 
-# What shell to use
-SHELL = /bin/bash
-
-# By default do not show executed command
-ifeq ($(VERBOSE),1)
-  Q :=
-else
-  Q := @
-endif
-
-# Absolute path of source files (where this makefile is executed)
-SOURCE := $(CURDIR)
-
-# Try to improve performance
-MAKEFLAGS += -rR
-.PHONY: clean real-clean check debug list-files list-ignored $(SED_PROG) $(PERL_PROG)
-
 # Useful variables for commands (need to be recursively expanded)
 file = $(notdir $@)
 dir = $(subst $(DESTINATION)/,,$(dir $@))
 root = $(shell echo $(subst $(SOURCE),@,$(dir $<)) | sed -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!' -e 's!^\./!!')
 date = $(shell date $(DATE_FORMAT))
 mtime = $(shell date -r $< $(DATE_FORMAT))
+
 exist = $(subst $(1)/,,$(wildcard $(1)/$(2)))
+name2bre = $(subst .,\.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst *,\*,$(1)))))))
+glob2bre = $(subst *,.*,$(subst ?,.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst .,\.,$(1))))))))
 
 # Ouput all source files (if opt=-v) or all ignored source files
 CMD_FILES := \
   find -H $(SOURCE) -type f -o -type l \
-  | grep -e ^$(SOURCE)/makefile$$ \
-         -e $(TIDY_CONFIG) \
-         -e $(TEMPLATE) \
-         -e $(SETTINGS) \
-         -e /$(IGNORE)$$ \
-         -e /$(KEEP)$$ \
-         -e /$(notdir $(TEMPLATE))$$ \
-		 -Ee '[ "'\''\]' \
-         -e ~$$ \
+  | grep -G \
+         -e '^$(SOURCE)/makefile$$' \
+         -e '$(call name2bre,$(TIDY_CONFIG))' \
+         -e '$(call name2bre,$(TEMPLATE))' \
+         -e '$(call name2bre,$(SETTINGS))' \
+         -e '$(call name2bre,/$(IGNORE))$$' \
+         -e '$(call name2bre,/$(KEEP))$$' \
+         -e '$(call name2bre,/$(notdir $(TEMPLATE)))$$' \
+		 -e '[ "'\''\]' \
+         -e '~$$' \
          $(foreach dir, \
                    $(shell find $(SOURCE) -name $(IGNORE) -printf "%h "), \
-                   $(addprefix -e $(dir)/,$(addsuffix $$,$(shell sed 's!/$$!!g' $(dir)/$(IGNORE))) \
-                                          $(addsuffix /,$(shell sed 's!/$$!!g' $(dir)/$(IGNORE))) \
-           )) \
+                   $(addprefix -e '$(dir)/,$(addsuffix $$',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                     $(addprefix -e '$(dir)/,$(addsuffix $$',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                     $(addprefix -e '$(dir)/,$(addsuffix /',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                     $(addprefix -e '$(dir)/,$(addsuffix /',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+           ) \
          $$opt \
   | sort
 
@@ -260,9 +303,11 @@ CMD_KEEP := \
   grep -q \
   $(foreach dir, \
             $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
-            $(addprefix -e ^$(dir)/,$(addsuffix $$,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))) \
-                                    $(addsuffix /,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
- # comment present to embed a space in CMD_KEEP
+            $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
+              $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
+              $(addprefix -e ^$(dir)/,$(addsuffix /,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
+              $(addprefix -e ^$(dir)/,$(addsuffix /,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP)))))) \
+ # comment present to embed a space in CMD_KEEP '
 
 # Output the right template file path to use
 tmp_ini = $(1) := 
@@ -286,7 +331,7 @@ CMD_TIDY := tidy -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG))
 # asked)
 CMD_BEFORE = \
   cat $< \
-  $(if $(value EXT_BEFORE),| $(EXT_BEFORE))
+  $(if $(value HOOK_BEFORE),| $(HOOK_BEFORE))
 
 # Send template file with content replaced by standard input to standard
 # output
@@ -296,12 +341,13 @@ CMD_HTML = \
     @FILE@ "$(file)" \
     @ROOT@ "$(root)" \
     @DATE@ "$(date)" \
-    @MTIME@ "$(mtime)"
+    @MTIME@ "$(mtime)" \
+    $(if $(value HOOK_MACROS),$(HOOK_MACROS))
 
 # Tidy HTML file from standard input (after applying some modifications if
 # asked) and save it into destination file
 CMD_AFTER = \
-  $(if $(value EXT_AFTER),$(EXT_AFTER) |) \
+  $(if $(value HOOK_AFTER),$(HOOK_AFTER) |) \
   $(if $(value CMD_TIDY),$(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog),cat |) \
   >$@ || true
 
@@ -398,9 +444,10 @@ real-clean:
 	$(Q)rm -rf $(ALL_FILES)
 
 check:
-	$(Q)$(DO_CHECK_CMD) date
+	$(Q)$(DO_CHECK_CMD) which
 	$(Q)$(DO_CHECK_CMD) find
 	$(Q)$(DO_CHECK_CMD) perl
+	$(Q)$(DO_CHECK_CMD) date
 	$(Q)$(DO_CHECK_CMD) sed
 	$(Q)$(DO_CHECK_CMD) tidy
 	$(Q)$(DO_CHECK_CMD) true
