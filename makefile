@@ -59,8 +59,6 @@ ifeq ($(origin PERL_PROG), undefined)
 PERL_PROG := $(TMP)/p
 endif
 
-#### Nothing to change after this line #######################################
-
 ##############################################################################
 #
 # Les fichiers avec extension .html sont utilises pour creer des
@@ -154,12 +152,6 @@ endif
 # tel quel utilisent 2 caracteres jokers : `*` remplace n'importe
 # quelle suite de caracteres (y compris la suite vide) et `?` remplace
 # un caractere quelconque.
-#
-##############################################################################
-
-##############################################################################
-#
-# Developer code conventions
 #
 ##############################################################################
 
@@ -374,7 +366,7 @@ DO_HTML = \
     echo "KEEP_COPY $(dir)$(file)" ; \
     $(CMD_COPY) ; \
   else \
-    /bin/echo -e "  DO_HTML $(dir)$(file)\twith template $(CMD_TEMPLATE)" ; \
+    /bin/echo -e "  DO_HTML (on $(CMD_TEMPLATE)) $(dir)$(file)" ; \
     mkdir -p $(dir $@) && \
     $(CMD_BEFORE) | $(CMD_HTML) | $(CMD_AFTER) ; \
   fi	
@@ -393,7 +385,7 @@ ALL_FILES := $(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
 FILES = $(if $(value HOOK_FILES),$(HOOK_FILES),$(ALL_FILES))
 
 # Debug stuff
-DEBUG_DEPS :=
+DEBUG_DEPS := 
 
 ##############################################################################
 
@@ -443,10 +435,10 @@ $(DESTINATION)/%:: $(SOURCE)/% $(DEBUG_DEPS)
 	$(Q)$(DO_COPY)
 
 clean:
-	$(Q)find $(SOURCE) -name '*~' -delete
+	$(Q)find $(SOURCE) -name '*~' -delete -print
 
 real-clean:
-	$(Q)rm -rf $(ALL_FILES)
+	$(Q)rm -rf $(FILES)
 
 check:
 	$(Q)$(DO_CHECK_CMD) which
