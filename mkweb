@@ -5,6 +5,9 @@ ifeq ($(origin SETTINGS), undefined)
 SETTINGS := .settings
 endif
 
+# Absolute path of source files (where this makefile is executed)
+SOURCE := $(CURDIR)
+
 # Processed files wil be copied in this directory
 ifeq ($(origin DESTINATION), undefined)
 DESTINATION := /tmp/ws
@@ -26,7 +29,7 @@ endif
 
 # Tidy config file
 ifeq ($(origin TIDY_CONFIG), undefined)
-TIDY_CONFIG := $(HOME)/.tidyrc
+TIDY_CONFIG := $(SOURCE)/.tidyrc
 endif
 
 # Basename of files containing filename specification to ignore
@@ -44,6 +47,11 @@ ifeq ($(origin VERBOSE), undefined)
 VERBOSE := 0
 endif
 
+# Do not print anything on execution if SILENT is set to 1
+ifeq ($(origin SILENT), undefined)
+SILENT := 0
+endif
+
 # Temporary directory
 ifeq ($(origin TEMP), undefined)
 TMP := /tmp
@@ -59,9 +67,10 @@ ifeq ($(origin PERL_PROG), undefined)
 PERL_PROG := $(TMP)/p
 endif
 
+# Default action to execute
 all: gen
 
-define HELP
+define DOC
 ##############################################################################
 #
 # Les fichiers avec extension .html sont utilises pour creer des
@@ -158,10 +167,36 @@ define HELP
 #
 ##############################################################################
 endef
-export HELP
+export DOC
 
-# Absolute path of source files (where this makefile is executed)
-SOURCE := $(CURDIR)
+# Name of the current makefile name
+MAKEFILE := $(notdir $(lastword $(MAKEFILE_LIST)))
+
+define HELP
+##############################################################################
+# Usage: $(MAKEFILE) [VAR=VALUE ...] [ACTION]
+#
+# where ACTION includes
+#
+#     help             show this help message
+#     doc              display documentation
+#
+#     gen              generate web site
+#
+#     check            check if needed commands and files are available
+#
+#     list-vars        list available variables with default values
+#     list-files       list source files to be processed
+#     list-gen         list destination files to be created
+#     list-ignored     list ignored files in source directory
+#
+#     clean            remove unnecessary files (backup files, etc.)
+#     real-clean       remove generated files and unnecessary files
+#
+# If no ACTION specified the `gen` one is issued.
+##############################################################################
+endef
+export HELP
 
 # If settings file exists read it now!
 ifeq ($(wildcard $(SETTINGS)),$(SETTINGS))
@@ -178,9 +213,18 @@ else
   Q := @
 endif
 
+# By default show actions done
+ifeq ($(SILENT),0)
+	ECHO := echo
+	OUT :=
+else
+	ECHO := :
+	OUT := 1>/dev/null 2>&1
+endif
+
 # Try to improve performance
 MAKEFLAGS += -rR
-.PHONY: gen help clean real-clean check debug list-files list-ignored $(SED_PROG) $(PERL_PROG)
+.PHONY: gen doc help clean real-clean check list-vars list-files list-ignored $(SED_PROG) $(PERL_PROG)
 
 # Sed script to include source into template (not used anymore)
 define SED_SCRIPT
@@ -274,7 +318,7 @@ glob2bre = $(subst *,.*,$(subst ?,.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(sub
 CMD_FILES := \
   find -H $(SOURCE) -type f -o -type l \
   | grep -G \
-         -e '^$(SOURCE)/makefile$$' \
+         -e '^$(SOURCE)/$(MAKEFILE)$$' \
          -e '$(call name2bre,$(TIDY_CONFIG))' \
          -e '$(call name2bre,$(TEMPLATE))' \
          -e '$(call name2bre,$(SETTINGS))' \
@@ -357,29 +401,29 @@ CMD_COPY = \
 
 # Check if a command is available (must be used through call)
 DO_CHECK_CMD = \
-echo -n "    CHECK " ; \
-  which $(1)
+$(ECHO) -n "    CHECK " ; \
+  which $(1) $(OUT)
 
 # Check if a file exist (must be used through call)
 DO_CHECK_FILE = \
-echo "    CHECK $(1)" ; \
+$(ECHO) "    CHECK $(1)" ; \
   $(if $(wildcard $(1)),true,false)
 
 # Process source (HTML) file
 DO_HTML = \
   if echo $< | $(CMD_KEEP) ; then \
-    echo "KEEP_COPY $(dir)$(file)" ; \
-    $(CMD_COPY) ; \
+    $(ECHO) "KEEP_COPY $(dir)$(file)" ; \
+    $(CMD_COPY) $(OUT); \
   else \
-    /bin/echo -e "  DO_HTML (on $(CMD_TEMPLATE)) $(dir)$(file)" ; \
+    $(ECHO) -e "  DO_HTML (on $(CMD_TEMPLATE)) $(dir)$(file)" ; \
     mkdir -p $(dir $@) && \
     $(CMD_BEFORE) | $(CMD_HTML) | $(CMD_AFTER) ; \
   fi	
 
 # Copy file
 DO_COPY = \
-echo "     COPY $(dir)$(file)" ; \
-  $(CMD_COPY)
+$(ECHO) "     COPY $(dir)$(file)" ; \
+  $(CMD_COPY) $(OUT)
 
 # List of auxiliary programs used
 ALL_PROGS := $(SED_PROG) $(PERL_PROG)
@@ -395,11 +439,20 @@ DEBUG_DEPS :=
 ##############################################################################
 
 help:
-	echo "$$HELP" | tr -d '#'
+	@echo "$$HELP" | tr -d '#'
+
+doc:
+	@echo "$$DOC" | tr -d '#'
 
 gen: check $(PROGS) $(FILES)
 
-vars:
+$(SED_PROG):
+	$(Q)echo "$$SED_SCRIPT" >$@
+
+$(PERL_PROG):
+	$(Q)echo "$$PERL_SCRIPT" >$@
+
+list-vars:
 	@echo "      SOURCE = $(SOURCE)"
 	@echo " DESTINATION = $(DESTINATION)"
 	@echo "    TEMPLATE = $(TEMPLATE)"
@@ -415,16 +468,11 @@ vars:
 	@echo "    SED_PROG = $(SED_PROG)"
 	@echo "   PERL_PROG = $(PERL_PROG)"
 	@echo "       SHELL = $(SHELL)"
+	@echo "    MAKEFILE = $(MAKEFILE)"
 	@echo "       FILES = see /tmp/files, /tmp/ignored and /tmp/gen"
 	@opt=-v ; $(CMD_FILES) >/tmp/files
 	@echo "$(FILES)" | tr ' ' '\n' >/tmp/gen
 	@$(CMD_FILES) > /tmp/ignored
-
-$(SED_PROG):
-	$(Q)echo "$$SED_SCRIPT" >$@
-
-$(PERL_PROG):
-	$(Q)echo "$$PERL_SCRIPT" >$@
 
 list-files:
 	$(Q)opt=-v ; $(CMD_FILES)
