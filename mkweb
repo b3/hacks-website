@@ -399,7 +399,7 @@ help:
 
 gen: check $(PROGS) $(FILES)
 
-debug:
+vars:
 	@echo "      SOURCE = $(SOURCE)"
 	@echo " DESTINATION = $(DESTINATION)"
 	@echo "    TEMPLATE = $(TEMPLATE)"
