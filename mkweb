@@ -79,7 +79,7 @@ PERL_PROG := $(TMP)/p
 endif
 
 # Default action to execute
-all: gen
+all: create
 
 define DOC
 ##############################################################################
@@ -192,7 +192,7 @@ define HELP
 #     help             show this help message
 #     doc              display documentation
 #
-#     gen              generate web site
+#     create           create web site
 #
 #     check            check if needed commands and files are available
 #
@@ -204,7 +204,7 @@ define HELP
 #     clean            remove unnecessary files (backup files, etc.)
 #     real-clean       remove generated files and unnecessary files
 #
-# If no ACTION specified the `gen` one is issued.
+# If no ACTION specified the `create` one is issued.
 ##############################################################################
 endef
 export HELP
@@ -235,7 +235,7 @@ endif
 
 # Try to improve performance
 MAKEFLAGS += -rR
-.PHONY: gen doc help clean real-clean check list-vars list-files list-ignored $(SED_PROG) $(PERL_PROG)
+.PHONY: create doc help clean real-clean check list-vars list-files list-ignored $(SED_PROG) $(PERL_PROG)
 
 # Sed script to include source into template (not used anymore)
 define SED_SCRIPT
@@ -455,7 +455,7 @@ help:
 doc:
 	@echo "$$DOC" | tr -d '#'
 
-gen: check $(PROGS) $(FILES)
+create: check $(PROGS) $(FILES)
 
 $(SED_PROG):
 	$(Q)echo "$$SED_SCRIPT" >$@
@@ -513,6 +513,7 @@ check:
 	$(Q)$(call DO_CHECK_CMD,perl)
 	$(Q)$(call DO_CHECK_CMD,date)
 	$(Q)$(call DO_CHECK_CMD,sed)
+	$(Q)$(call DO_CHECK_CMD,tr)
 	$(Q)$(call DO_CHECK_CMD,tidy)
 	$(Q)$(call DO_CHECK_CMD,true)
 	$(Q)$(call DO_CHECK_CMD,false)
