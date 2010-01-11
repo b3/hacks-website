@@ -1,4 +1,15 @@
 #!/usr/bin/make -f
+# Create a static website using source and template files
+
+# Copyright (C) 2009-2010 Bruno BEAUFILS <bruno@boulgour.com>
+#
+# Look for DOC or HELP in this file for more informations.
+#
+# This software comes with ABSOLUTELY NO WARRANTY.
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation in its version 2.
+# See the README or COPYING file for details.
 
 # Settings may be put in this file (may be fixed on command line)
 ifeq ($(origin SETTINGS), undefined)

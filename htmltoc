@@ -1,0 +1,157 @@
+#!/usr/bin/perl
+# Generate Table Of Contents from headings in (x)HTML
+
+# Copyright (C) 2008-2010 Bruno BEAUFILS <bruno@boulgour.com>
+#
+# Code borrowed from IkiWiki::Plugin:toc before modification
+#
+# It replaces the content of the <div> identified by `toc` with a
+# table of contents generated from headings found in the HTML file
+# specified, or standard input if none specified.
+#
+# This software comes with ABSOLUTELY NO WARRANTY.
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation in its version 2.
+# See the README or COPYING file for details.
+
+use warnings;
+use strict;
+use HTML::Parser;
+use Getopt::Long;
+
+# Global default setting
+my $levels=5;
+
+# Check for command-line switches
+Getopt::Long::Configure('pass_through');
+GetOptions('levels=i'=>\$levels) or die "usage: $0 [--levels LEVELS] [FILE]";
+
+# Defining content to deal with
+my $content;
+if ($#ARGV >= 0) 
+{
+    open(STDIN, "< $ARGV[0]") || die("$0: can't open datafile: $!");
+}
+while (<STDIN>)
+{
+    $content .= $_;
+}
+
+# Parsing the file
+my $p = HTML::Parser->new(api_version => 3);
+my $page = "";
+my $index = "";
+my %anchors;
+my $curlevel;
+my $startlevel = 0;
+my $liststarted = 0;
+my $indent = sub { "\t" x $curlevel };
+my $oldanchor;
+my $oldstart;
+
+$p->handler(start => \&start, "tagname, text");
+$p->handler(default => sub {
+    $page .= join("", @_);
+			}, "text");
+$p->parse($content);
+$p->eof;
+
+# Generating the toc
+while ($startlevel && $curlevel >= $startlevel) {
+    $index .= &$indent."</li>\n" if $curlevel;
+    $curlevel --;
+    $index .= &$indent."</ol>\n";
+}
+
+# Replacing in toc in content
+$page =~ s@(<div id=[\"\']toc[\"\']>).*(</div>)@$1\n$index\n$2@mg;
+
+# Output the result
+print "$page";
+
+1;
+
+##############################################################################
+
+sub start {
+    my $tagname=shift;
+    my $text=shift;
+    if ($tagname =~ /^h(\d+)$/i) {
+        my $level=$1;
+        my $anchor="index".++$anchors{$level}."h$level";
+        
+        $oldanchor=0;
+        $page.="$text<a name=\"$anchor\"></a>";
+        
+        # Take the first header level seen as the topmost level,
+        # even if there are higher levels seen later on.
+        if (! $startlevel) {
+            $startlevel=$level;
+            $curlevel=$startlevel-1;
+        }
+        elsif ($level < $startlevel) {
+            $level=$startlevel;
+        }
+        
+        return if $level - $startlevel >= $levels;
+        
+        if ($level > $curlevel) {
+            while ($level > $curlevel + 1) {
+                $index.=&$indent."<ol>\n";
+                $curlevel++;
+                $index.=&$indent."<li class=\"L$curlevel\">\n";
+            }
+            $index.=&$indent."<ol>\n";
+            $curlevel=$level;
+            $liststarted=1;
+        }
+        elsif ($level < $curlevel) {
+            while ($level < $curlevel) {
+                $index.=&$indent."</li>\n" if $curlevel;
+                $curlevel--;
+                $index.=&$indent."</ol>\n";
+            }
+            $liststarted=0;
+        }
+        
+        $index.=&$indent."</li>\n" unless $liststarted;
+        $liststarted=0;
+        $index.=&$indent."<li class=\"L$curlevel\">".
+            "<a href=\"#$anchor\">";
+        
+        $p->handler(start => sub {
+            my $tagname=shift;
+            if ($tagname eq 'a' ){ # FIXME: il faudrait s'assurer qu'il y a un attribut name
+                $oldanchor = 1;
+            }
+        }, "tagname, text");
+        
+        $p->handler(text => sub {
+            if ($oldanchor != 1) {
+                $page.=join("", @_);
+                $index.=join("", @_);
+            }
+        }, "text");
+
+        $p->handler(end => sub {
+            my $tagname=shift;
+            if ($tagname =~ /^h(\d+)$/i) {
+                $p->handler(start => \&start);
+                $p->handler(text => undef);
+                $p->handler(end => undef);
+                $index.="</a>";
+                $page.=join("", @_);
+            } elsif ($tagname eq 'a') {
+                $oldanchor = 0;
+            } else {
+                $page.=join("", @_);
+            }
+        }, "tagname, text");
+    }
+    else {
+        $page.=$text;
+    }
+}
+
+##############################################################################
