@@ -349,8 +349,6 @@ CMD_FILES := \
   | sort
 
 # Let pass only source files which should be kept as is
-#   Last space before the comment should stay present to please grep in the
-#   case there is no files to keep
 tmp_keep := \
  $(foreach dir, \
             $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
@@ -375,7 +373,6 @@ CMD_TEMPLATE = \
                        $(call exist,$(SOURCE),$(template))))
 
 # Tidy HTML from standard input to standard output
-#   FIXME: tidy does not like & in URL :-(
 CMD_TIDY := tidy -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG))
 
 # Send dependency content to standard input (and apply some modifications if
