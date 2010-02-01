@@ -415,6 +415,11 @@ DO_CHECK_CMD = \
 $(ECHO) -n "    CHECK " ; \
   which $(1) $(OUT)
 
+# Check if a GNU command is available (must be used through call)
+DO_CHECK_GNUCMD = \
+$(ECHO) -n "    CHECK " ; \
+  $(1) --version 2>/dev/null | grep -q GNU && echo `which $(1)` $(OUT)
+
 # Check if a file exist (must be used through call)
 DO_CHECK_FILE = \
 $(ECHO) "    CHECK $(1)" ; \
@@ -509,9 +514,9 @@ real-clean:
 
 check:
 	$(Q)$(call DO_CHECK_CMD,which)
-	$(Q)$(call DO_CHECK_CMD,find)
+	$(Q)$(call DO_CHECK_GNUCMD,find)
 	$(Q)$(call DO_CHECK_CMD,perl)
-	$(Q)$(call DO_CHECK_CMD,date)
+	$(Q)$(call DO_CHECK_GNUCMD,date)
 	$(Q)$(call DO_CHECK_CMD,sed)
 	$(Q)$(call DO_CHECK_CMD,tr)
 	$(Q)$(call DO_CHECK_CMD,tidy)
