@@ -13,7 +13,7 @@
 
 # Settings may be put in this file (may be fixed on command line)
 ifeq ($(origin SETTINGS), undefined)
-SETTINGS := .settings
+SETTINGS := .mkwebrc
 endif
 
 # Absolute path of source files (where this makefile is executed)
