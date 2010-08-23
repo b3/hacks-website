@@ -24,13 +24,15 @@ ifeq ($(origin DESTINATION), undefined)
 DESTINATION := /tmp/ws
 endif
 
-# HTML files created will be based on this template file
-TEMPLATE ?= $(SOURCE)/template.html
+# HTML files created will be based on this template file (absolute path)
+ifeq ($(origin TEMPLATE), undefined)
+TEMPLATE := $(SOURCE)/template.html
+endif
 
 # Template content between these marks will be replaced by file content
-ifeq ($(origin START_MARK), undefined)
-START_MARK := <!-- @DEBUT_CONTENU@ -->
-STOP_MARK := <!-- @FIN_CONTENU@ -->
+ifeq ($(origin START_CONTENT), undefined)
+START_CONTENT := <!-- @DEBUT_CONTENU@ -->
+STOP_CONTENT := <!-- @FIN_CONTENU@ -->
 endif
 
 # DATE_FORMAT should not contain exclamation mark
@@ -68,14 +70,14 @@ ifeq ($(origin TEMP), undefined)
 TMP := /tmp
 endif
 
-# Temporary sed program
-ifeq ($(origin SED_PROG), undefined)
-SED_PROG := $(TMP)/s
-endif
-
-# Temporary perl program
+# Temporary perl modification program
 ifeq ($(origin PERL_PROG), undefined)
 PERL_PROG := $(TMP)/p
+endif
+
+# Temporary perl find program
+ifeq ($(origin PERL_FIND), undefined)
+PERL_FIND := $(TMP)/f
 endif
 
 # Default action to execute
@@ -84,97 +86,99 @@ all: create
 define DOC
 ##############################################################################
 #
-# Les fichiers avec extension .html sont utilises pour creer des
-# fichiers, aux chemins relatifs identiques, dans le repertoire
-# DESTINATION. La creation est faite en remplacant dans un fichier
-# modele tout ce qu'il y a entre START_MARK et STOP_MARK par le
-# contenu du fichier .html.
+# In this documentation uppercased words refer to variables and source file
+# root directory is where the command is executed.
 #
-# Le modele utilise est un fichier, de meme nom de base que TEMPLATE,
-# present dans le repertoire du fichier .html traite, ou dans un des
-# repertoires parents en remontant jusqu'a la racine des sources (meme
-# endroit que ce makefile), ou simplement le fichier TEMPLATE. Le
-# choix est fait dans cet ordre (le premier trouve est utilise).
+# This command uses files with `.html` extension (source files) in order to
+# create new files, with same basename and same relative path, below the
+# directory DESTINATION. Existing hierarchy of files is preserved and
+# reproduced.
 #
-# La transformation des fichiers a extension .html utilise perl via un
-# programme construit dans PERL_PROG.
+# Files transformation process
+# ============================
 #
-# Cette transformation remplace certaines chaines trouvees dans le
-# fichier source :
+# Created file are based on a template in which every text between
+# START_CONTENT and STOP_CONTENT is replaced by the content of the processed
+# `.html` file.
 #
-# * @DIR@ par le chemin relatif a la racine du repertoire du fichier source
+# The used template is a file, with same basename as TEMPLATE, which is lookup
+# from the directory containing the processed `.html` file to the root of
+# source files (which is the directory where the command is executed, also
+# stored in SOURCE). This lookup is done upward and use the first matching
+# template file found or TEMPLATE if none are found in the path.
 #
-# * @FILE@ par le nom de base du fichier source
+# Creation of new `.html` files from sources one is done by a perl script
+# build and stored in PERL_PROG.
 #
-# * @ROOT@ par un chemin relatif vers le repertoire racine
+# This processing replaces some strings found in the source file:
 #
-# * @DATE@ par la date courante en respectant le format DATE_FORMAT
+# * @DIR@ by the dirname of source file (from the root of source files)
 #
-# * @MTIME@ par la date de derniere modification du fichier source
+# * @FILE@ by the basename of source file
 #
-# D'autres transformation de chaines peuvent etre effectues via HOOK_MACROS.
+# * @ROOT@ by a relative path to the root of source files
 #
-# Les fichiers .html generes sont nettoyes avec tidy en utilisant le
-# fichier de configuration TIDY_CONFIG.
+# * @DATE@ by the current date using format DATE_FORMAT
 #
-# Il est possible de filtrer le contenu avant la transformation via
-# HOOK_BEFORE, ou apres (mais avant tidy) via HOOK_AFTER.
+# * @MTIME@ by the last modification date of source file
+#
+# Other strings replacement may be done via HOOK_MACROS. In that case
+# HOOK_MACROS must be a even numbered list of strings. First string is
+# replaced by second, third by fourth, etc.
+#
+# Generated `.html` files are cleaned up by tidy using TIDY_CONFIG config
+# file.
+#
+# Content may be filtered before processing, via HOOK_BEFORE, or after (but
+# before tidy), via HOOK_AFTER.
+#
+# Files selection process
+# =======================
+#
+# Files without `.html` suffix are copied without modification in their
+# destination directory.
+#
+# Every source directory may contain an IGNORE file or a KEEP file.
+#
+# Some files are completely ignored by the whole process (nothing is done on
+# them). It is the case for TIDY_CONFIG, TEMPLATE, SETTINGS and files:
+#
+# * which basename is IGNORE, KEEP or same basename as TEMPLATE,
+#
+# * which name use a space, a single quote, a double quote or a backslash,
+#
+# * which name is an emacs backup name (ends with a tilda character),
 # 
-# Les fichiers sans extension .html sont copies tel quel dans le
-# repertoire destination.
+# * which basename is mentioned in the IGNORE file located in their directory,
 #
-# Chaque repertoire peut contenir un fichier IGNORE et un fichier
-# KEEP.
+# * which basename match a pattern mentioned in an IGNORE file located in one
+#   of the directories below their own directory,
 #
-# Le repertoire racine est celui dans lequel se trouve ce makefile.
+# * which relative path (or directory path) from another directory is
+#   mentioned in the IGNORE file located in this (root) directory,
+# 
+# * which relative path (or directory path) from another directory match a
+#   pattern mentioned in an IGNORE file located in one of the directories
+#   below this (root) directory.
 #
-# Certains fichiers sont completement ignores par le processus (on en
-# fait rien du tout). C'est le cas de ce fichier makefile, du fichier
-# TIDY_CONFIG, du fichier TEMPLATE, du fichier SETTINGS et des
-# fichiers dont :
+# Some files with `.html` suffix may be copied as is (without being touched by
+# the whole modification process). It is the case for files:
 #
-# * le nom de base est IGNORE, KEEP, ou le nom de base de TEMPLATE,
+# * which basename is mentioned in the KEEP file located in their directory,
 #
-# * le nom contient un espace, une quote simple, une quote double ou
-#   un backslash,
+# * which basename match a pattern mentioned in a KEEP file located in one of
+#   the directories below their own directory,
 #
-# * le nom correspond à un nom de fichier backup d'Emacs (avec comme
-#   extension le caractere tilde),
+# * which relative path (or directory path) from another directory is
+#   mentioned in the KEEP file located in this (root) directory,
+# 
+# * which relative path (or directory path) from another directory match a
+#   pattern mentioned in an KEEP file located in one of the directories below
+#   this (root) directory.
 #
-# * le nom de base est present dans le fichier IGNORE de leur
-#   repertoire,
-#
-# * le nom de base correspond a un motif present dans un fichier
-#   IGNORE d'un repertoire en dessous de leur repertoire,
-#
-# * le chemin (du fichier ou de son repertoire) relatif a un
-#   repertoire est present dans le fichier IGNORE de celui-ci,
-#
-# * le chemin (du fichier ou de son repertoire) relatif a un
-#   repertoire correspond a un motif present dans un fichier IGNORE
-#   d'un repertoire situe en dessous de celui-la.
-#
-# Certains fichiers avec extension .html, peuvent etre copie tels
-# quels (sans subir la transformation utilisant les marques START_MARK
-# et STOP_MARK). C'est le cas des fichiers dont :
-#
-# * le nom de base est present dans le fichier KEEP de leur
-#   repertoire,
-#
-# * le nom de base correspond a un motif present dans un fichier
-#   KEEP d'un repertoire en dessous de leur repertoire,
-#
-# * le chemin (du fichier ou de son repertoire) relatif a un
-#   repertoire est present dans le fichier KEEP de celui-ci,
-#
-# * le chemin (du fichier ou de son repertoire) relatif a un
-#   repertoire correspond a un motif present dans un fichier KEEP
-#   d'un repertoire situe en dessous de celui-la.
-#
-# Les motifs pour la designation des fichiers a ignorer ou conserver
-# tel quel utilisent 2 caracteres jokers : `*` remplace n'importe
-# quelle suite de caracteres (y compris la suite vide) et `?` remplace
-# un caractere quelconque.
+# Patterns for file to ignore or to keep may use 2 differents joker: `*` match
+# any string of characters (including the empty one) and `?` match any single
+# character.
 #
 ##############################################################################
 endef
@@ -185,7 +189,7 @@ MAKEFILE := $(notdir $(lastword $(MAKEFILE_LIST)))
 
 define HELP
 ##############################################################################
-# Usage: $(MAKEFILE) [VAR=VALUE ...] [ACTION]
+# usage: $(MAKEFILE) [VAR=VALUE ...] [ACTION]
 #
 # where ACTION includes
 #
@@ -235,30 +239,11 @@ endif
 
 # Try to improve performance
 MAKEFLAGS += -rR
-.PHONY: create doc help clean real-clean check list-vars list-files list-ignored $(SED_PROG) $(PERL_PROG)
-
-# Sed script to include source into template (not used anymore)
-define SED_SCRIPT
-#-----------------------------------------------------------------------------
-s/$(START_MARK)//
-t dedans
-b fin
-:dedans
-N
-s/$(STOP_MARK)//
-t contenu
-b dedans
-:contenu
-x
-r $<
-D
-:fin
-#-----------------------------------------------------------------------------
-endef
-export SED_SCRIPT
+.PHONY: create doc help clean real-clean check list-vars list-files list-ignored $(PERL_PROG) $(PERL_FIND)
 
 # Perl script to include source into template with some macro substitutions
-define PERL_SCRIPT
+define PERL_PROG_FILE
+#!/usr/bin/perl
 #-----------------------------------------------------------------------------
 # Get template filename from command line
 my $$template = shift(@ARGV);
@@ -289,7 +274,7 @@ my $$inside = 0;
 while (<T>)
 {
     # Entering content part
-    if ($$_ =~ q{$(START_MARK)})
+    if ($$_ =~ q{$(START_CONTENT)})
     {
         $$inside = 1;
         # Output content part
@@ -299,7 +284,7 @@ while (<T>)
         }
     }
     # Exiting content part
-    elsif ($$inside && $$_ =~ q{$(STOP_MARK)})
+    elsif ($$inside && $$_ =~ q{$(STOP_CONTENT)})
     {
         $$inside = 0;
     }
@@ -312,7 +297,96 @@ while (<T>)
 close(T);
 #-----------------------------------------------------------------------------
 endef
-export PERL_SCRIPT
+export PERL_PROG_FILE
+
+# Perl script to find files (replace some find command usage specific to GNU)
+define PERL_FIND_FILE
+#!/usr/bin/perl
+#-----------------------------------------------------------------------------
+use Getopt::Long;
+
+my @files = ();
+my @bre = ();
+my $$invert = 0;
+my $$name = undef;
+my $$sep = "\n";
+
+# Get root of finding and then others parameters from command line
+my $$root = shift;
+GetOptions("e=s" => \@bre, "v" => \$$invert, "name=s" => \$$name);
+
+# Get all path from root directory
+find($$root);
+
+# Filter path by regexp...
+if (scalar(@bre) > 0)
+{
+    @files = grep($$invert != &match_re($$_), @files);
+}
+# ... or by basename
+elsif (defined($$name))
+{
+	$$sep = " ";
+    @files = grep(defined($$_), map(match_name($$_), @files));
+}
+
+# Print sorted path
+foreach (sort(@files))
+{
+    print("$$_$$sep");
+}
+
+# Fill @files with path to every ordinary or symbolic link files under $$root
+sub find
+{
+    my $$root = shift;
+
+    opendir(DIR, $$root) || die("can't opendir $$root");
+    my @entries = grep { !/^\.$$/ && !/^\.\.$$/ } readdir(DIR);
+    closedir(DIR);
+
+    foreach (@entries)
+    {
+        if (-d "$$root/$$_" && ! -l "$$root/$$_")
+        {
+#           push(@files, "$$root/$$_/");
+            find("$$root/$$_");
+        }
+        else
+        {
+            push(@files, "$$root/$$_");
+        }
+    }
+}
+
+# True if entry match ones of recorded regexps
+sub match_re
+{
+    my $$entry = shift;
+
+    foreach (@bre)
+    {
+        if ($$entry =~ m{$$_}) { return 1; }
+    }
+    return 0;
+}
+
+# Ouput dirname of entry if entry's basename match recorded name
+sub match_name
+{
+    my @parts = split(/\//, shift);
+
+    if ($$name  eq "$$parts[$$#parts]")
+    {
+        pop(@parts);
+        if (@parts >=1) { return join("/", @parts); }
+        return ".";
+    }
+    return undef;
+}
+#-----------------------------------------------------------------------------
+endef
+export PERL_FIND_FILE
 
 # Useful variables for commands (need to be recursively expanded)
 file = $(notdir $@)
@@ -322,13 +396,12 @@ date = $(shell date $(DATE_FORMAT))
 mtime = $(shell date -r $< $(DATE_FORMAT))
 
 exist = $(subst $(1)/,,$(wildcard $(1)/$(2)))
-name2bre = $(subst .,\.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst *,\*,$(1)))))))
-glob2bre = $(subst *,.*,$(subst ?,.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst .,\.,$(1))))))))
+name2bre = $(subst .,\.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst *,\*,$(subst \,\\,$(1))))))))
+glob2bre = $(subst *,.*,$(subst ?,.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst .,\.,$(subst \,\\,$(1)))))))))
 
 # Ouput all source files (if opt=-v) or all ignored source files
 CMD_FILES := \
-  find -H $(SOURCE) -type f -o -type l \
-  | grep -G \
+  perl $(PERL_FIND) $(SOURCE) \
          -e '^$(SOURCE)/$(MAKEFILE)$$' \
          -e '$(call name2bre,$(TIDY_CONFIG))' \
          -e '$(call name2bre,$(TEMPLATE))' \
@@ -336,22 +409,21 @@ CMD_FILES := \
          -e '$(call name2bre,/$(IGNORE))$$' \
          -e '$(call name2bre,/$(KEEP))$$' \
          -e '$(call name2bre,/$(notdir $(TEMPLATE)))$$' \
-		 -e '[ "'\''\]' \
+		 -e '[ "'\''\\]' \
          -e '~$$' \
          $(foreach dir, \
-                   $(shell find $(SOURCE) -name $(IGNORE) -printf "%h "), \
+                   $(shell perl $(PERL_FIND) $(SOURCE) -name $(IGNORE)), \
                    $(addprefix -e '$(dir)/,$(addsuffix $$',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
-                     $(addprefix -e '$(dir)/,$(addsuffix $$',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
-                     $(addprefix -e '$(dir)/,$(addsuffix /',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
-                     $(addprefix -e '$(dir)/,$(addsuffix /',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                   $(addprefix -e '$(dir)/,$(addsuffix $$',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                   $(addprefix -e '$(dir)/,$(addsuffix /',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                   $(addprefix -e '$(dir)/,$(addsuffix /',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
            ) \
-         $$opt \
-  | sort
+         $$opt
 
 # Let pass only source files which should be kept as is
 tmp_keep := \
  $(foreach dir, \
-            $(shell find $(SOURCE) -name $(KEEP) -printf "%h "), \
+            $(shell perl $(PERL_FIND) $(SOURCE) -name $(KEEP)), \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix /,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
@@ -439,7 +511,7 @@ $(ECHO) "     COPY $(dir)$(file)" ; \
   $(CMD_COPY) $(OUT)
 
 # List of auxiliary programs used
-ALL_PROGS := $(SED_PROG) $(PERL_PROG)
+ALL_PROGS := $(PERL_PROG) $(PERL_FIND)
 PROGS = $(if $(value HOOK_PROGS),$(HOOK_PROGS),$(ALL_PROGS))
 
 # List of all source files to process
@@ -459,30 +531,30 @@ doc:
 
 create: check $(PROGS) $(FILES)
 
-$(SED_PROG):
-	$(Q)echo "$$SED_SCRIPT" >$@
-
 $(PERL_PROG):
-	$(Q)echo "$$PERL_SCRIPT" >$@
+	$(Q)echo "$$PERL_PROG_FILE" >$@
+
+$(PERL_FIND):
+	$(Q)echo "$$PERL_FIND_FILE" >$@
 
 list-vars:
-	@echo "      SOURCE = $(SOURCE)"
-	@echo " DESTINATION = $(DESTINATION)"
-	@echo "    TEMPLATE = $(TEMPLATE)"
-	@echo "  START_MARK = $(START_MARK)"
-	@echo "   STOP_MARK = $(STOP_MARK)"
-	@echo " DATE_FORMAT = $(DATE_FORMAT)"
-	@echo " TIDY_CONFIG = $(TIDY_CONFIG)"
-	@echo "    SETTINGS = $(SETTINGS)"
-	@echo "      IGNORE = $(IGNORE)"
-	@echo "        KEEP = $(KEEP)"
-	@echo "     VERBOSE = $(VERBOSE)"
-	@echo "         TMP = $(TMP)"
-	@echo "    SED_PROG = $(SED_PROG)"
-	@echo "   PERL_PROG = $(PERL_PROG)"
-	@echo "       SHELL = $(SHELL)"
-	@echo "    MAKEFILE = $(MAKEFILE)"
-	@echo "       FILES = see /tmp/files, /tmp/ignored and /tmp/gen"
+	@echo "       SOURCE = $(SOURCE)"
+	@echo "  DESTINATION = $(DESTINATION)"
+	@echo "     TEMPLATE = $(TEMPLATE)"
+	@echo "START_CONTENT = $(START_CONTENT)"
+	@echo "  STOP_CONTENT = $(STOP_CONTENT)"
+	@echo "  DATE_FORMAT = $(DATE_FORMAT)"
+	@echo "  TIDY_CONFIG = $(TIDY_CONFIG)"
+	@echo "     SETTINGS = $(SETTINGS)"
+	@echo "       IGNORE = $(IGNORE)"
+	@echo "         KEEP = $(KEEP)"
+	@echo "      VERBOSE = $(VERBOSE)"
+	@echo "          TMP = $(TMP)"
+	@echo "    PERL_PROG = $(PERL_PROG)"
+	@echo "    PERL_FIND = $(PERL_FIND)"
+	@echo "        SHELL = $(SHELL)"
+	@echo "     MAKEFILE = $(MAKEFILE)"
+	@echo "        FILES = see /tmp/files, /tmp/ignored and /tmp/gen"
 	@opt=-v ; $(CMD_FILES) >/tmp/files
 	@echo "$(FILES)" | tr ' ' '\n' >/tmp/gen
 	@$(CMD_FILES) > /tmp/ignored
@@ -520,6 +592,10 @@ check:
 	$(Q)$(call DO_CHECK_CMD,true)
 	$(Q)$(call DO_CHECK_CMD,false)
 	$(Q)$(call DO_CHECK_FILE,$(TEMPLATE))
+
+debug:
+	$(Q)echo $(CMD_FILES)
+
 
 # Local Variables:
 # tab-width: 4
