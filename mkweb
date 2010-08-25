@@ -541,7 +541,7 @@ $(PERL_PROG):
 $(PERL_FIND):
 	$(Q)echo "$$PERL_FIND_FILE" >$@
 
-list-vars:
+list-vars: $(PROGS)
 	@echo "       SOURCE = $(SOURCE)"
 	@echo "  DESTINATION = $(DESTINATION)"
 	@echo "     TEMPLATE = $(TEMPLATE)"
@@ -563,13 +563,13 @@ list-vars:
 	@echo "$(FILES)" | tr ' ' '\n' >/tmp/gen
 	@$(CMD_FILES) > /tmp/ignored
 
-list-files:
+list-files: $(PROGS)
 	$(Q)opt=-v ; $(CMD_FILES)
 
-list-ignored:
+list-ignored: $(PROGS)
 	$(Q)$(CMD_FILES)
 
-list-gen:
+list-gen: $(PROGS)
 	$(Q)echo "$(FILES)" | tr ' ' '\n'
 
 # FIXME: les dependances ne sont pas bonne. Si un TEMPLATE nouveau est present le fichier n'est pas recree
@@ -579,10 +579,10 @@ $(DESTINATION)/%.html: $(SOURCE)/%.html $(DEBUG_DEPS) $(CMD_TEMPLATE)
 $(DESTINATION)/%:: $(SOURCE)/% $(DEBUG_DEPS)
 	$(Q)$(DO_COPY)
 
-clean:
+clean: $(PROGS)
 	$(Q)find $(SOURCE) -name '*~' -delete -print
 
-real-clean:
+real-clean: $(PROGS)
 	$(Q)rm -rf $(FILES)
 
 check:
