@@ -535,10 +535,10 @@ doc:
 
 create: check $(PROGS) $(FILES)
 
-$(PERL_PROG):
+$(PERL_PROG): $(MAKEFILE)
 	$(Q)echo "$$PERL_PROG_FILE" >$@
 
-$(PERL_FIND):
+$(PERL_FIND): $(MAKEFILE)
 	$(Q)echo "$$PERL_FIND_FILE" >$@
 
 list-vars: $(PROGS)
