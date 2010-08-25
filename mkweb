@@ -308,12 +308,12 @@ use Getopt::Long;
 my @files = ();
 my @bre = ();
 my $$invert = 0;
-my $$name = undef;
+my @name = ();
 my $$sep = "\n";
 
 # Get root of finding and then others parameters from command line
 my $$root = shift;
-GetOptions("e=s" => \@bre, "v" => \$$invert, "name=s" => \$$name);
+GetOptions("e=s" => \@bre, "v" => \$$invert, "name=s" => \@name);
 
 # Get all path from root directory
 find($$root);
@@ -324,14 +324,15 @@ if (scalar(@bre) > 0)
     @files = grep($$invert != &match_re($$_), @files);
 }
 # ... or by basename
-elsif (defined($$name))
+elsif (defined($$name[0]))
 {
 	$$sep = " ";
     @files = grep(defined($$_), map(match_name($$_), @files));
 }
 
-# Print sorted path
-foreach (sort(@files))
+# Print sorted uniq path
+my $$prev = undef;
+foreach (grep($$_ ne $$prev && (($$prev) = $$_), sort(@files)))
 {
     print("$$_$$sep");
 }
@@ -376,12 +377,15 @@ sub match_name
 {
     my @parts = split(/\//, shift);
 
-    if ($$name  eq "$$parts[$$#parts]")
-    {
-        pop(@parts);
-        if (@parts >=1) { return join("/", @parts); }
-        return ".";
-    }
+	foreach (@name)
+	{
+		if ($$_  eq "$$parts[$$#parts]")
+		{
+			pop(@parts);
+			if (@parts >=1) { return join("/", @parts); }
+			return ".";
+		}
+	}
     return undef;
 }
 #-----------------------------------------------------------------------------
