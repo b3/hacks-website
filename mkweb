@@ -86,13 +86,13 @@ all: create
 define DOC
 ##############################################################################
 #
-# In this documentation uppercased words refer to variables and source file
-# root directory is where the command is executed.
+# In this documentation uppercased words refer to variables defined in mkweb
+# command ; source file root directory is where the command is executed.
 #
-# This command uses files with `.html` extension (source files) in order to
-# create new files, with same basename and same relative path, below the
-# directory DESTINATION. Existing hierarchy of files is preserved and
-# reproduced.
+# The goal of this command is to use files with `.html` extension (source
+# files) in order to create new files, with same basename and same relative
+# path, below the directory DESTINATION. Existing hierarchy of files is
+# preserved and reproduced.
 #
 # Files transformation process
 # ============================
@@ -101,9 +101,9 @@ define DOC
 # START_CONTENT and STOP_CONTENT is replaced by the content of the processed
 # `.html` file.
 #
-# The used template is a file, with same basename as TEMPLATE, which is lookup
-# from the directory containing the processed `.html` file to the root of
-# source files (which is the directory where the command is executed, also
+# The used template is a file, with same basename as TEMPLATE, which is looked
+# up from the directory containing the processed `.html` file up to the root
+# of source files (which is the directory where the command is executed, also
 # stored in SOURCE). This lookup is done upward and use the first matching
 # template file found or TEMPLATE if none are found in the path.
 #
@@ -180,6 +180,8 @@ define DOC
 # any string of characters (including the empty one) and `?` match any single
 # character.
 #
+# Files selection is done by a perl script build and stored in PERL_FIND.
+#
 ##############################################################################
 endef
 export DOC
@@ -196,7 +198,8 @@ define HELP
 #     help             show this help message
 #     doc              display documentation
 #
-#     create           create web site
+#     prepare          prepare source files
+#     create           prepare source files and then create web site pages
 #
 #     check            check if needed commands and files are available
 #
@@ -323,10 +326,11 @@ if (scalar(@bre) > 0)
 {
     @files = grep($$invert != &match_re($$_), @files);
 }
-# ... or by basename
-elsif (defined($$name[0]))
+
+# ... by basename
+if (defined($$name[0]))
 {
-	$$sep = " ";
+    $$sep = " ";
     @files = grep(defined($$_), map(match_name($$_), @files));
 }
 
@@ -377,15 +381,15 @@ sub match_name
 {
     my @parts = split(/\//, shift);
 
-	foreach (@name)
-	{
-		if ($$_  eq "$$parts[$$#parts]")
-		{
-			pop(@parts);
-			if (@parts >=1) { return join("/", @parts); }
-			return ".";
-		}
-	}
+    foreach (@name)
+    {
+        if ($$_  eq "$$parts[$$#parts]")
+        {
+            pop(@parts);
+            if (@parts >=1) { return join("/", @parts); }
+            return ".";
+        }
+    }
     return undef;
 }
 #-----------------------------------------------------------------------------
@@ -418,9 +422,9 @@ CMD_FILES := \
          $(foreach dir, \
                    $(shell perl $(PERL_FIND) $(SOURCE) -name $(IGNORE)), \
                    $(addprefix -e '$(dir)/,$(addsuffix $$',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
-                   $(addprefix -e '$(dir)/,$(addsuffix $$',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
-                   $(addprefix -e '$(dir)/,$(addsuffix /',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
-                   $(addprefix -e '$(dir)/,$(addsuffix /',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                     $(addprefix -e '$(dir)/,$(addsuffix $$',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                     $(addprefix -e '$(dir)/,$(addsuffix /',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
+                     $(addprefix -e '$(dir)/,$(addsuffix /',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
            ) \
          $$opt
 
@@ -514,7 +518,7 @@ DO_COPY = \
 $(ECHO) "     COPY $(dir)$(file)" ; \
   $(CMD_COPY) $(OUT)
 
-# List of auxiliary programs used
+# List of auxiliary programs need for the creation process
 ALL_PROGS := $(PERL_PROG) $(PERL_FIND)
 PROGS = $(if $(value HOOK_PROGS),$(HOOK_PROGS),$(ALL_PROGS))
 
@@ -546,7 +550,7 @@ list-vars: $(PROGS)
 	@echo "  DESTINATION = $(DESTINATION)"
 	@echo "     TEMPLATE = $(TEMPLATE)"
 	@echo "START_CONTENT = $(START_CONTENT)"
-	@echo "  STOP_CONTENT = $(STOP_CONTENT)"
+	@echo " STOP_CONTENT = $(STOP_CONTENT)"
 	@echo "  DATE_FORMAT = $(DATE_FORMAT)"
 	@echo "  TIDY_CONFIG = $(TIDY_CONFIG)"
 	@echo "     SETTINGS = $(SETTINGS)"
