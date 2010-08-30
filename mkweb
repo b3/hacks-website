@@ -340,117 +340,117 @@ define PERL_FIND_FILE
 use Getopt::Long;
 
 my @files = ();
-my @bre = ();
+my @regexp = ();
 my $$invert = 0;
 my $$dir = 0;
 my $$delete = 0;
 my @basename = ();
 my $$sep = "\n";
 
-# Get root of finding and then others parameters from command line
-my $$root = shift;
+# Get root of finding process and then others parameters from command line
+my $$root = shift || die("no root directory specified");
 GetOptions(
-	"e=s" => \@bre,
-	"basename=s" => \@basename,
-	"dir" => \$$dir,
-	"delete" => \$$delete,
-	"v" => \$$invert);
+    "e=s" => \@regexp,          # regexp path need to match
+    "basename=s" => \@basename, # basename file need to match
+    "dir" => \$$dir,             # print only dir part of matching path
+    "delete" => \$$delete,       # delete files instead of just print them
+    "v" => \$$invert);           # invert the meaning of matching
 
 # Get all path from root directory
 find($$root);
 
 # Filter path by regexp...
-if (scalar(@bre) > 0)
+if (scalar(@regexp) > 0)
 {
-	@files = grep($$invert != &match_re($$_), @files);
+    @files = grep($$invert != &match_re($$_), @files);
 }
 
 # ... by basename
 if (defined($$basename[0]))
 {
-	$$sep = " ";
-	@files = grep(defined($$_), map(match_name($$_), @files));
+    $$sep = " ";
+    @files = grep(defined($$_), map(match_name($$_), @files));
 }
 
+# Sort (longest first) matching paths and remove duplicates
+my $$prev = undef;
+@files = grep($$_ ne $$prev && (($$prev) = $$_), sort(compare @files));
+
+# Delete and print or just print matching files
 if ($$delete)
 {
-    # Delete then sorted (longest first) uniq path
-	my $$prev = undef;
-	unlink(grep($$_ ne $$prev && (($$prev) = $$_), sort(compare @files)));
+    $$sep = "\n";
+    map({unlink($$_); print($$_.$$sep); } @files);
 }
 else
 {
-    # Print sorted (longest first) uniq path
-	my $$prev = undef;
-	foreach (grep($$_ ne $$prev && (($$prev) = $$_), sort(compare @files)))
-	{
-		print("$$_$$sep");
-	}
+    print(map({$$_ .= $$sep} @files));
 }
 
 # Fill @files with path to every ordinary or symbolic link files under $$root
 sub find
 {
-	my $$root = shift;
+    my $$root = shift;
 
-	opendir(DIR, $$root) || die("can't opendir $$root");
-	my @entries = grep { !/^\.$$/ && !/^\.\.$$/ } readdir(DIR);
-	closedir(DIR);
+    opendir(DIR, $$root) || die("can't opendir $$root");
+    my @entries = grep { !/^\.$$/ && !/^\.\.$$/ } readdir(DIR);
+    closedir(DIR);
 
-	foreach (@entries)
-	{
-		if (-d "$$root/$$_" && ! -l "$$root/$$_")
-		{
-#			push(@files, "$$root/$$_/");
-			find("$$root/$$_");
-		}
-		else
-		{
-			push(@files, "$$root/$$_");
-		}
-	}
+    foreach (@entries)
+    {
+        if (-d "$$root/$$_" && ! -l "$$root/$$_")
+        {
+#           push(@files, "$$root/$$_/");
+            find("$$root/$$_");
+        }
+        else
+        {
+            push(@files, "$$root/$$_");
+        }
+    }
 }
 
 # True if entry match ones of recorded regexps
 sub match_re
 {
-	my $$entry = shift;
+    my $$entry = shift;
 
-	foreach (@bre)
-	{
-		if ($$entry =~ m{$$_}) { return 1; }
-	}
-	return 0;
+    foreach (@regexp)
+    {
+        if ($$entry =~ m{$$_}) { return 1; }
+    }
+    return 0;
 }
 
-# Ouput dirname of entry if entry's basename match recorded ones
+# Output dirname of entry if entry's basename match recorded ones
 sub match_name
 {
-	my $$entry = shift;
-	my @parts = split(/\//, $$entry);
+    my $$entry = shift;
+    my @parts = split(/\//, $$entry);
 
-	foreach (@basename)
-	{
-		if ($$_	eq "$$parts[$$#parts]")
-		{
-			if ($$dir)
-			{
-				pop(@parts);
-				if (@parts >= 1) { return join("/", @parts); }
-				return ".";
-			}
-			return $$entry;
-		}
-	}
-	return undef;
+    foreach (@basename)
+    {
+        if ($$_  eq "$$parts[$$#parts]")
+        {
+            if ($$dir)
+            {
+                pop(@parts);
+                if (@parts >= 1) { return join("/", @parts); }
+                return ".";
+            }
+            return $$entry;
+        }
+    }
+    return undef;
 }
 
 # Compare paths: longest first (with more slashes) then classic lexicographic
 sub compare
 {
-	my $$c = ($$b =~ tr{/}{}) - ($$a =~ tr{/}{});
-	return $$c ? $$c : $$a cmp $$b;
+    my $$c = ($$b =~ tr{/}{}) - ($$a =~ tr{/}{});
+    return $$c ? $$c : $$a cmp $$b;
 }
+
 #-----------------------------------------------------------------------------
 endef
 export PERL_FIND_FILE
