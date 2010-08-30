@@ -343,15 +343,17 @@ my @files = ();
 my @bre = ();
 my $$invert = 0;
 my $$dir = 0;
-my @name = ();
+my $$delete = 0;
+my @basename = ();
 my $$sep = "\n";
 
 # Get root of finding and then others parameters from command line
 my $$root = shift;
 GetOptions(
 	"e=s" => \@bre,
-	"name=s" => \@name,
+	"basename=s" => \@basename,
 	"dir" => \$$dir,
+	"delete" => \$$delete,
 	"v" => \$$invert);
 
 # Get all path from root directory
@@ -364,17 +366,26 @@ if (scalar(@bre) > 0)
 }
 
 # ... by basename
-if (defined($$name[0]))
+if (defined($$basename[0]))
 {
 	$$sep = " ";
 	@files = grep(defined($$_), map(match_name($$_), @files));
 }
 
-# Print sorted uniq path
-my $$prev = undef;
-foreach (grep($$_ ne $$prev && (($$prev) = $$_), sort(@files)))
+if ($$delete)
 {
-	print("$$_$$sep");
+    # Delete then sorted (longest first) uniq path
+	my $$prev = undef;
+	unlink(grep($$_ ne $$prev && (($$prev) = $$_), sort(compare @files)));
+}
+else
+{
+    # Print sorted (longest first) uniq path
+	my $$prev = undef;
+	foreach (grep($$_ ne $$prev && (($$prev) = $$_), sort(compare @files)))
+	{
+		print("$$_$$sep");
+	}
 }
 
 # Fill @files with path to every ordinary or symbolic link files under $$root
@@ -412,13 +423,13 @@ sub match_re
 	return 0;
 }
 
-# Ouput dirname of entry if entry's basename match recorded name
+# Ouput dirname of entry if entry's basename match recorded ones
 sub match_name
 {
 	my $$entry = shift;
 	my @parts = split(/\//, $$entry);
 
-	foreach (@name)
+	foreach (@basename)
 	{
 		if ($$_	eq "$$parts[$$#parts]")
 		{
@@ -432,6 +443,13 @@ sub match_name
 		}
 	}
 	return undef;
+}
+
+# Compare paths: longest first (with more slashes) then classic lexicographic
+sub compare
+{
+	my $$c = ($$b =~ tr{/}{}) - ($$a =~ tr{/}{});
+	return $$c ? $$c : $$a cmp $$b;
 }
 #-----------------------------------------------------------------------------
 endef
@@ -467,7 +485,7 @@ CMD_FILES := \
 		 -e '[ "'\''\\]' \
          -e '~$$' \
          $(foreach dir, \
-                   $(shell perl $(PERL_FIND) $(SOURCE) -name $(IGNORE) -dir), \
+                   $(shell perl $(PERL_FIND) $(SOURCE) -basename $(IGNORE) -dir), \
                    $(addprefix -e '$(dir)/,$(addsuffix $$',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
                      $(addprefix -e '$(dir)/,$(addsuffix $$',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
                      $(addprefix -e '$(dir)/,$(addsuffix /',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
@@ -480,7 +498,7 @@ endif
 ifndef TWO_PASS
 tmp_keep := \
  $(foreach dir, \
-            $(shell perl $(PERL_FIND) $(SOURCE) -name $(KEEP) -dir), \
+            $(shell perl $(PERL_FIND) $(SOURCE) -basename $(KEEP) -dir), \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix /,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
@@ -694,7 +712,7 @@ $(DESTINATION)/%:: $(SOURCE)/%
 # Clean all unwanted files in the source directory
 ifndef TWO_PASS
 clean:
-	$(Q)echo rm -f $(shell perl $(PERL_FIND) $(SOURCE) -e '.*~$$')
+	$(Q)perl $(PERL_FIND) $(SOURCE) -e '.*~$$' -delete
 else
 clean: $(PROGS)
 	$(Q)$(COMMAND) $@
