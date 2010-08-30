@@ -349,12 +349,15 @@ my $$sep = "\n";
 
 # Get root of finding process and then others parameters from command line
 my $$root = shift || die("no root directory specified");
-GetOptions(
+if (!GetOptions(
     "e=s" => \@regexp,          # regexp path need to match
     "basename=s" => \@basename, # basename file need to match
     "dir" => \$$dir,             # print only dir part of matching path
     "delete" => \$$delete,       # delete files instead of just print them
-    "v" => \$$invert);           # invert the meaning of matching
+    "v" => \$$invert))           # invert the meaning of matching
+{
+    die();
+}
 
 # Get all path from root directory
 find($$root);
