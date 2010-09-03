@@ -35,6 +35,11 @@ ifeq ($(origin TEMPLATE), undefined)
 TEMPLATE := $(SOURCE)/template.html
 endif
 
+# Basename of makefile used to prepare source files
+ifeq ($(origin PREPARE), undefined)
+PREPARE := .prepare
+endif
+
 # Template content between these marks will be replaced by file content
 ifeq ($(origin START_CONTENT), undefined)
 START_CONTENT := <!-- @DEBUT_CONTENU@ -->
@@ -195,6 +200,7 @@ define HELP
 #     list-files       list source files to be processed
 #     list-build       list destination files to be created
 #     list-ignored     list ignored files in source directory
+#     list-prepare     list directory in which preparation takes place
 #
 #     clean            remove unnecessary files (backup files, etc.)
 #     real-clean       remove generated files and unnecessary files
@@ -254,8 +260,15 @@ endif
 
 # Tools must exist: we use this makefile twice at first use
 ifeq ($(shell test -x $(PERL_FIND) || echo 1), 1)
-TWO_PASS := 1
+FIRST_USE := 1
 MAKEFLAGS += --no-print-directory
+
+# If prepare is a target run it in a separate pass before others
+else ifeq ($(findstring prepare,$(MAKECMDGOALS)),prepare)
+PREPARE_PASS := 1
+MAKEFLAGS += --no-print-directory
+NEXT_MAKECMDGOALS := $(subst prepare,,$(MAKECMDGOALS))
+
 endif
 
 # Try to improve performance
@@ -273,7 +286,7 @@ COMMAND := $(MAKE) -f $(lastword $(MAKEFILE_LIST)) $(MAKEFLAGS)
 ##############################################################################
 
 # Perl script to include source into template with some macro substitutions
-ifdef TWO_PASS
+ifdef FIRST_USE
 define PERL_PROG_FILE
 #!/usr/bin/perl
 #-----------------------------------------------------------------------------
@@ -333,7 +346,7 @@ export PERL_PROG_FILE
 endif
 
 # Perl script to find files (replace some find command usage specific to GNU)
-ifdef TWO_PASS
+ifdef FIRST_USE
 define PERL_FIND_FILE
 #!/usr/bin/perl
 #-----------------------------------------------------------------------------
@@ -354,7 +367,7 @@ GetOptions(
     "basename=s" => \@basename, # basename file need to match
     "dir" => \$$dir,             # print only dir part of matching path
     "delete" => \$$delete,       # delete files instead of just print them
-    "v" => \$$invert))           # invert the meaning of matching
+    "v" => \$$invert)            # invert the meaning of matching
 || die();
 
 # Get all path from root directory
@@ -369,7 +382,7 @@ if (scalar(@regexp) > 0)
 # ... by basename
 if (defined($$basename[0]))
 {
-    $$sep = " ";
+#    $$sep = " ";
     @files = grep(defined($$_), map(match_name($$_), @files));
 }
 
@@ -380,7 +393,7 @@ my $$prev = undef;
 # Delete and print or just print matching files
 if ($$delete)
 {
-    $$sep = "\n";
+#    $$sep = "\n";
     map({unlink($$_); print($$_.$$sep); } @files);
 }
 else
@@ -460,7 +473,7 @@ endif
 ##############################################################################
 
 # Useful variables for commands (need to be recursively expanded)
-ifndef TWO_PASS
+ifndef FIRST_USE
 file = $(notdir $@)
 dir = $(subst $(DESTINATION)/,,$(dir $@))
 root = $(shell echo $(subst $(SOURCE),@,$(dir $<)) | sed -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!' -e 's!^\./!!')
@@ -472,10 +485,13 @@ name2bre = $(subst .,\.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(
 glob2bre = $(subst *,.*,$(subst ?,.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst .,\.,$(subst \,\\,$(1)))))))))
 endif
 
+# Command used to find files
+CMD_FIND := perl $(PERL_FIND)
+
 # Ouput all source files (if opt=-v) or all ignored source files
-ifndef TWO_PASS
+ifndef FIRST_USE
 CMD_FILES := \
-  perl $(PERL_FIND) $(SOURCE) \
+  $(CMD_FIND) $(SOURCE) \
          -e '^$(SOURCE)/$(MAKEFILE)$$' \
          -e '$(call name2bre,$(TIDY_CONFIG))' \
          -e '$(call name2bre,$(TEMPLATE))' \
@@ -483,10 +499,11 @@ CMD_FILES := \
          -e '$(call name2bre,/$(IGNORE))$$' \
          -e '$(call name2bre,/$(KEEP))$$' \
          -e '$(call name2bre,/$(notdir $(TEMPLATE)))$$' \
+         -e '$(call name2bre,/$(PREPARE))$$' \
 		 -e '[ "'\''\\]' \
          -e '~$$' \
          $(foreach dir, \
-                   $(shell perl $(PERL_FIND) $(SOURCE) -basename $(IGNORE) -dir), \
+                   $(shell $(CMD_FIND) $(SOURCE) -basename $(IGNORE) -dir), \
                    $(addprefix -e '$(dir)/,$(addsuffix $$',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
                      $(addprefix -e '$(dir)/,$(addsuffix $$',$(call glob2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
                      $(addprefix -e '$(dir)/,$(addsuffix /',$(call name2bre,$(shell sed -e 's!/$$!!g' $(dir)/$(IGNORE))))) \
@@ -496,10 +513,10 @@ CMD_FILES := \
 endif
 
 # Let pass only source files which should be kept as is
-ifndef TWO_PASS
+ifndef FIRST_USE
 tmp_keep := \
  $(foreach dir, \
-            $(shell perl $(PERL_FIND) $(SOURCE) -basename $(KEEP) -dir), \
+            $(shell $(CMD_FIND) $(SOURCE) -basename $(KEEP) -dir), \
             $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix $$,$(call glob2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
               $(addprefix -e ^$(dir)/,$(addsuffix /,$(call name2bre,$(shell sed 's!/$$!!g' $(dir)/$(KEEP))))) \
@@ -508,7 +525,7 @@ CMD_KEEP := $(if $(value tmp_keep),grep -q $(tmp_keep),false)
 endif
 
 # Output the right template file path to use
-ifndef TWO_PASS
+ifndef FIRST_USE
 tmp_ini = $(1) := 
 tmp_acc = $(if $($(1)),$(1):=$($(1))/$(2),$(1):=$(2))
 CMD_TEMPLATE = \
@@ -527,14 +544,14 @@ endif
 CMD_TIDY := tidy -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG))
 
 # Send dependency content to standard output (and filter it if asked)
-ifndef TWO_PASS
+ifndef FIRST_USE
 CMD_BEFORE = \
   cat $< \
   $(if $(value HOOK_BEFORE),| $(HOOK_BEFORE))
 endif
 
 # Send template with content replaced by standard input to standard output
-ifndef TWO_PASS
+ifndef FIRST_USE
 CMD_HTML = \
   perl $(PERL_PROG) $(CMD_TEMPLATE) \
     @DIR@ "$(dir)" \
@@ -546,7 +563,7 @@ CMD_HTML = \
 endif
 
 # Filter standard input if asked, tidy and then save it to destination file
-ifndef TWO_PASS
+ifndef FIRST_USE
 CMD_AFTER = \
   $(if $(value HOOK_AFTER),$(HOOK_AFTER) |) \
   $(if $(value CMD_TIDY),$(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog),cat |) \
@@ -558,6 +575,11 @@ endif
 CMD_COPY = \
   mkdir -p $(dir $@) && \
   cp -l -d -f $< $@ 2>/dev/null 1>&2 || cp -d -f $< $@
+
+# Output all dir containing makefile used to prepare source files
+ifndef FIRST_USE
+CMD_PREPARE := $(CMD_FIND) $(SOURCE) -basename $(PREPARE) -dir
+endif
 
 ##############################################################################
 
@@ -576,8 +598,13 @@ DO_CHECK_FILE = \
 $(ECHO) "    CHECK $(1)" ; \
   $(if $(wildcard $(1)),true,false)
 
+# Prepare a source directory
+DO_PREPARE := \
+$(ECHO) "  PREPARE $$dir" ; \
+  $(MAKE) -C $$dir -f $(PREPARE) --no-print-directory
+
 # Process source (HTML) file
-ifndef TWO_PASS
+ifndef FIRST_USE
 DO_HTML = \
   if echo $< | $(CMD_KEEP) ; then \
     $(ECHO) "KEEP_COPY $(dir)$(file)" ; \
@@ -599,15 +626,22 @@ ALL_PROGS := $(PERL_PROG) $(PERL_FIND)
 PROGS = $(if $(value HOOK_PROGS),$(HOOK_PROGS),$(ALL_PROGS))
 
 # List of all source files to process
-ifndef TWO_PASS
+ifndef FIRST_USE
 ALL_FILES := $(subst $(SOURCE)/,$(DESTINATION)/,$(shell opt=-v ; $(CMD_FILES)))
 FILES = $(if $(value HOOK_FILES),$(HOOK_FILES),$(ALL_FILES))
+endif
+
+# List of all dirs containing makefile used to prepare source files
+ifndef FIRST_USE
+PREPARE_DIRS := $(shell $(CMD_PREPARE))
 endif
 
 # Debug stuff
 DEBUG_DEPS := 
 
 ##############################################################################
+
+# Targets
 
 # Show help message
 help:
@@ -617,12 +651,26 @@ help:
 doc:
 	@echo "$$DOC" | tr -d '#'
 
-# Create web site
-ifndef TWO_PASS
-create: $(FILES)
+# Prepare source files
+ifdef FIRST_USE
+prepare: check
+	$(Q)$(COMMAND) $@
+else ifdef PREPARE_PASS
+prepare:
+	$(Q)for dir in $(PREPARE_DIRS) ; do $(DO_PREPARE) ; done
+ifneq ($(NEXT_MAKECMDGOALS),)
+	$(Q)$(COMMAND) $(NEXT_MAKECMDGOALS)
+endif
 else
+prepare:
+endif
+
+# Create web site
+ifdef FIRST_USE
 create: check
 	$(Q)$(COMMAND) $@
+else ifndef PREPARE_PASS
+create: $(FILES)
 endif
 
 # Check if all needed tools are available
@@ -650,7 +698,10 @@ $(PERL_FIND): $(MAKEFILE)
 	$(Q)chmod +x $@
 
 # Show used variables
-ifndef TWO_PASS
+ifdef FIRST_USE
+list-vars: check
+	$(Q)$(COMMAND) $@
+else
 list-vars:
 	@echo "     SETTINGS = $(SETTINGS)"
 	@echo "       SOURCE = $(SOURCE)"
@@ -662,48 +713,55 @@ list-vars:
 	@echo "  TIDY_CONFIG = $(TIDY_CONFIG)"
 	@echo "       IGNORE = $(IGNORE)"
 	@echo "         KEEP = $(KEEP)"
+	@echo "      PREPARE = $(PREPARE)"
 	@echo "      VERBOSE = $(VERBOSE)"
 	@echo "       SILENT = $(SILENT)"
-else
-list-vars: check
-	$(Q)$(COMMAND) $@
 endif
 
 # Show all source files
-ifndef TWO_PASS
-list-files:
-	$(Q)opt=-v ; $(CMD_FILES)
-else
+ifdef FIRST_USE
 list-files: $(PROGS)
 	$(Q)$(COMMAND) $@
+else
+list-files:
+	$(Q)opt=-v ; $(CMD_FILES)
 endif
 
 # Show all ignored files
-ifndef TWO_PASS
-list-ignored:
-	$(Q)$(CMD_FILES)
-else
+ifdef FIRST_USE
 list-ignored: $(PROGS)
 	$(Q)$(COMMAND) $@
+else
+list-ignored:
+	$(Q)$(CMD_FILES)
 endif
 
 # Show all generated files
-ifndef TWO_PASS
-list-build:
-	$(Q)echo "$(FILES)" | tr ' ' '\n'
-else
+ifdef FIRST_USE
 list-build: $(PROGS)
 	$(Q)$(COMMAND) $@
+else
+list-build:
+	$(Q)echo "$(FILES)"
+endif
+
+# Show all dirs in which source are prepared
+ifdef FIRST_USE
+list-prepare: $(PROGS)
+	$(Q)$(COMMAND) $@
+else
+list-prepare:
+	$(Q)$(CMD_PREPARE)
 endif
 
 # Create a destination HTML file from a source one
 # FIXME: mauvaises dependances si on a un nouveau TEMPLATE le fichier n'est pas recree
-ifndef TWO_PASS
-$(DESTINATION)/%.html: $(SOURCE)/%.html $(CMD_TEMPLATE)
-	$(Q)$(DO_HTML)
-else
+ifdef FIRST_USE
 $(DESTINATION)/%.html: $(PROGS)
 	$(Q)$(COMMAND) $@
+else
+$(DESTINATION)/%.html: $(SOURCE)/%.html $(CMD_TEMPLATE)
+	$(Q)$(DO_HTML)
 endif
 
 # Copy source non-HTML file as is in destination
@@ -711,25 +769,29 @@ $(DESTINATION)/%:: $(SOURCE)/%
 	$(Q)$(DO_COPY)
 
 # Clean all unwanted files in the source directory
-ifndef TWO_PASS
-clean:
-	$(Q)perl $(PERL_FIND) $(SOURCE) -e '.*~$$' -delete
-else
+ifdef FIRST_USE
 clean: $(PROGS)
 	$(Q)$(COMMAND) $@
+else
+clean:
+	$(Q)$(CMD_FIND) $(SOURCE) -e '.*~$$' -delete
 endif
 
 # Remove all files which can be created
-ifndef TWO_PASS
-real-clean: 
-	$(Q)rm -rf $(FILES) $(PROGS) $(CHECKED)
-	$(Q)for i in files ignored build ; do rm -f $(PREFIX)-$$i ; done
-else
+ifdef FIRST_USE
 real-clean: $(PROGS)
 	$(Q)$(COMMAND) $@
+else
+real-clean: 
+	$(Q)rm -rf $(FILES) $(PROGS) $(CHECKED)
+	$(Q)for i in files ignored build prepare ; do rm -f $(PREFIX)-$$i ; done
 endif
 
-ifndef TWO_PASS
+# Debug stuff
+ifdef FIRST_USE
+debug: $(PROGS)
+	$(Q)$(COMMAND) $@
+else
 debug: list-vars
 	@echo ""
 	@echo "     MAKEFILE = $(MAKEFILE)"
@@ -751,11 +813,12 @@ debug: list-vars
 	@$(COMMAND) list-ignored > $(PREFIX)-ignored
 	@echo "  build files = see $(PREFIX)-build"
 	@$(COMMAND) list-build > $(PREFIX)-build
+	@echo " prepare dirs = see $(PREFIX)-prepare"
+	@$(COMMAND) list-prepare > $(PREFIX)-prepare
 	@echo ""
+	@echo "     CMD_FIND = "$(CMD_FIND)
 	@echo "    CMD_FILES = "$(CMD_FILES)
-else
-debug: $(PROGS)
-	$(Q)$(COMMAND) $@
+	@echo " PREPARE_DIRS = "$(PREPARE_DIRS)
 endif
 
 # Local Variables:
