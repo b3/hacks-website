@@ -210,7 +210,8 @@ define HELP
 endef
 export HELP
 
-# Name of the current makefile
+# Name and basename of the current makefile
+COMMAND := $(lastword $(MAKEFILE_LIST))
 MAKEFILE := $(notdir $(lastword $(MAKEFILE_LIST)))
 
 # Temporary directory
@@ -279,9 +280,6 @@ MAKEFLAGS += -rR
 	check \
 	list-vars list-files list-ignored list-gen \
 	clean real-clean
-
-# How to recall the makefile if two passes are needed (first use for instance)
-COMMAND := $(MAKE) -f $(lastword $(MAKEFILE_LIST)) $(MAKEFLAGS) 
 
 ##############################################################################
 
@@ -472,6 +470,9 @@ endif
 
 ##############################################################################
 
+# How to recall the makefile if two passes are needed (first use for instance)
+CMD_MAKE := $(MAKE) -f $(lastword $(MAKEFILE_LIST)) $(MAKEFLAGS) 
+
 # Useful variables for commands (need to be recursively expanded)
 ifndef FIRST_USE
 file = $(notdir $@)
@@ -654,12 +655,12 @@ doc:
 # Prepare source files
 ifdef FIRST_USE
 prepare: check
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else ifdef PREPARE_PASS
 prepare:
 	$(Q)for dir in $(PREPARE_DIRS) ; do $(DO_PREPARE) ; done
 ifneq ($(NEXT_MAKECMDGOALS),)
-	$(Q)$(COMMAND) $(NEXT_MAKECMDGOALS)
+	$(Q)$(CMD_MAKE) $(NEXT_MAKECMDGOALS)
 endif
 else
 prepare:
@@ -668,7 +669,7 @@ endif
 # Create web site
 ifdef FIRST_USE
 create: check
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else ifndef PREPARE_PASS
 create: $(FILES)
 endif
@@ -700,7 +701,7 @@ $(PERL_FIND): $(MAKEFILE)
 # Show used variables
 ifdef FIRST_USE
 list-vars: check
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 list-vars:
 	@echo "     SETTINGS = $(SETTINGS)"
@@ -721,7 +722,7 @@ endif
 # Show all source files
 ifdef FIRST_USE
 list-files: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 list-files:
 	$(Q)opt=-v ; $(CMD_FILES)
@@ -730,7 +731,7 @@ endif
 # Show all ignored files
 ifdef FIRST_USE
 list-ignored: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 list-ignored:
 	$(Q)$(CMD_FILES)
@@ -739,7 +740,7 @@ endif
 # Show all generated files
 ifdef FIRST_USE
 list-build: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 list-build:
 	$(Q)echo "$(FILES)"
@@ -748,7 +749,7 @@ endif
 # Show all dirs in which source are prepared
 ifdef FIRST_USE
 list-prepare: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 list-prepare:
 	$(Q)$(CMD_PREPARE)
@@ -758,7 +759,7 @@ endif
 # FIXME: mauvaises dependances si on a un nouveau TEMPLATE le fichier n'est pas recree
 ifdef FIRST_USE
 $(DESTINATION)/%.html: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 $(DESTINATION)/%.html: $(SOURCE)/%.html $(CMD_TEMPLATE)
 	$(Q)$(DO_HTML)
@@ -771,7 +772,7 @@ $(DESTINATION)/%:: $(SOURCE)/%
 # Clean all unwanted files in the source directory
 ifdef FIRST_USE
 clean: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 clean:
 	$(Q)$(CMD_FIND) $(SOURCE) -e '.*~$$' -delete
@@ -780,21 +781,22 @@ endif
 # Remove all files which can be created
 ifdef FIRST_USE
 real-clean: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 real-clean: 
 	$(Q)rm -rf $(FILES) $(PROGS) $(CHECKED)
-	$(Q)for i in files ignored build prepare ; do rm -f $(PREFIX)-$$i ; done
+	$(Q)for i in files ignored build prepare ; do rm -f $(PREFIX)-$(lastword $(MAKEFILE_LIST))$$i ; done
 endif
 
 # Debug stuff
 ifdef FIRST_USE
 debug: $(PROGS)
-	$(Q)$(COMMAND) $@
+	$(Q)$(CMD_MAKE) $@
 else
 debug: list-vars
 	@echo ""
 	@echo "     MAKEFILE = $(MAKEFILE)"
+	@echo "      COMMAND = $(COMMAND)"
 	@echo "          TMP = $(TMP)"
 	@echo "    PERL_PROG = $(PERL_PROG)"
 	@echo "    PERL_FIND = $(PERL_FIND)"
@@ -805,16 +807,16 @@ debug: list-vars
 	@echo "          OUT = $(OUT)"
 	@echo "         MAKE = $(MAKE)"
 	@echo "    MAKEFLAGS = $(MAKEFLAGS)"
-	@echo "      COMMAND = $(COMMAND)"
+	@echo "     CMD_MAKE = $(CMD_MAKE)"
 	@echo ""
 	@echo " source files = see $(PREFIX)-files"
-	@$(COMMAND) list-files > $(PREFIX)-files
+	@$(CMD_MAKE) list-files > $(PREFIX)-files
 	@echo "ignored files = see $(PREFIX)-ignored"
-	@$(COMMAND) list-ignored > $(PREFIX)-ignored
+	@$(CMD_MAKE) list-ignored > $(PREFIX)-ignored
 	@echo "  build files = see $(PREFIX)-build"
-	@$(COMMAND) list-build > $(PREFIX)-build
+	@$(CMD_MAKE) list-build > $(PREFIX)-build
 	@echo " prepare dirs = see $(PREFIX)-prepare"
-	@$(COMMAND) list-prepare > $(PREFIX)-prepare
+	@$(CMD_MAKE) list-prepare > $(PREFIX)-prepare
 	@echo ""
 	@echo "     CMD_FIND = "$(CMD_FIND)
 	@echo "    CMD_FILES = "$(CMD_FILES)
