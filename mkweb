@@ -262,18 +262,16 @@ endif
 # Tools must exist: we use this makefile twice at first use
 ifeq ($(shell test -x $(PERL_FIND) || echo 1), 1)
 FIRST_USE := 1
-MAKEFLAGS += --no-print-directory
 
 # If prepare is a target run it in a separate pass before others
 else ifeq ($(findstring prepare,$(MAKECMDGOALS)),prepare)
 PREPARE_PASS := 1
-MAKEFLAGS += --no-print-directory
 NEXT_MAKECMDGOALS := $(subst prepare,,$(MAKECMDGOALS))
 
 endif
 
 # Try to improve performance
-MAKEFLAGS += -rR
+MAKEFLAGS += -rR --no-print-directory
 .PHONY: \
 	help doc \
 	create prepare \
