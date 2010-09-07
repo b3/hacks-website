@@ -211,8 +211,8 @@ endef
 export HELP
 
 # Name and basename of the current makefile
-COMMAND := $(lastword $(MAKEFILE_LIST))
-MAKEFILE := $(notdir $(lastword $(MAKEFILE_LIST)))
+COMMAND := $(firstword $(MAKEFILE_LIST))
+MAKEFILE := $(notdir $(firstword $(MAKEFILE_LIST)))
 
 # Temporary directory
 TMP := /tmp
@@ -279,7 +279,8 @@ MAKEFLAGS += -rR
 	create prepare \
 	check \
 	list-vars list-files list-ignored list-gen \
-	clean real-clean
+	clean real-clean \
+    debug
 
 ##############################################################################
 
@@ -471,7 +472,7 @@ endif
 ##############################################################################
 
 # How to recall the makefile if two passes are needed (first use for instance)
-CMD_MAKE := $(MAKE) -f $(lastword $(MAKEFILE_LIST)) $(MAKEFLAGS) 
+CMD_MAKE := $(MAKE) -f $(COMMAND) $(MAKEFLAGS) 
 
 # Useful variables for commands (need to be recursively expanded)
 ifndef FIRST_USE
@@ -689,12 +690,12 @@ $(CHECKED):
 	$(Q)touch $(CHECKED)
 
 # Generate perl modification program
-$(PERL_PROG): $(MAKEFILE)
+$(PERL_PROG): $(COMMAND)
 	$(Q)echo "$$PERL_PROG_FILE" >$@
 	$(Q)chmod +x $@
 
 # Generate perl find program
-$(PERL_FIND): $(MAKEFILE)
+$(PERL_FIND): $(COMMAND)
 	$(Q)echo "$$PERL_FIND_FILE" >$@
 	$(Q)chmod +x $@
 
@@ -785,7 +786,7 @@ real-clean: $(PROGS)
 else
 real-clean: 
 	$(Q)rm -rf $(FILES) $(PROGS) $(CHECKED)
-	$(Q)for i in files ignored build prepare ; do rm -f $(PREFIX)-$(lastword $(MAKEFILE_LIST))$$i ; done
+	$(Q)for i in files ignored build prepare ; do rm -f $(PREFIX)-$$i ; done
 endif
 
 # Debug stuff
@@ -807,7 +808,6 @@ debug: list-vars
 	@echo "          OUT = $(OUT)"
 	@echo "         MAKE = $(MAKE)"
 	@echo "    MAKEFLAGS = $(MAKEFLAGS)"
-	@echo "     CMD_MAKE = $(CMD_MAKE)"
 	@echo ""
 	@echo " source files = see $(PREFIX)-files"
 	@$(CMD_MAKE) list-files > $(PREFIX)-files
@@ -818,6 +818,7 @@ debug: list-vars
 	@echo " prepare dirs = see $(PREFIX)-prepare"
 	@$(CMD_MAKE) list-prepare > $(PREFIX)-prepare
 	@echo ""
+	@echo "     CMD_MAKE = "$(CMD_MAKE)
 	@echo "     CMD_FIND = "$(CMD_FIND)
 	@echo "    CMD_FILES = "$(CMD_FILES)
 	@echo " PREPARE_DIRS = "$(PREPARE_DIRS)
