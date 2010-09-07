@@ -797,6 +797,7 @@ debug: list-vars
 	@echo "     MAKEFILE = $(MAKEFILE)"
 	@echo "      COMMAND = $(COMMAND)"
 	@echo "          TMP = $(TMP)"
+	@echo "       PREFIX = $(PREFIX)"
 	@echo "    PERL_PROG = $(PERL_PROG)"
 	@echo "    PERL_FIND = $(PERL_FIND)"
 	@echo "      CHECKED = $(CHECKED)"
