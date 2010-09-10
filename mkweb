@@ -13,6 +13,9 @@
 
 ##############################################################################
 
+VERSION := 1
+VERSION_TIMESTAMP := 20100910
+
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
 # defined further in their value.
@@ -190,6 +193,7 @@ define HELP
 #
 #     help             show this help message
 #     doc              display documentation
+#     version          display version number
 #
 #     prepare          prepare source files
 #     create           prepare source files and then create web site pages
@@ -651,6 +655,10 @@ help:
 doc:
 	@echo "$$DOC" | tr -d '#'
 
+# Show version number
+version:
+	@printf "$(VERSION)\t$(VERSION_TIMESTAMP)\n"
+
 # Prepare source files
 ifdef FIRST_USE
 prepare: check
@@ -703,19 +711,21 @@ list-vars: check
 	$(Q)$(CMD_MAKE) $@
 else
 list-vars:
-	@echo "     SETTINGS = $(SETTINGS)"
-	@echo "       SOURCE = $(SOURCE)"
-	@echo "  DESTINATION = $(DESTINATION)"
-	@echo "     TEMPLATE = $(TEMPLATE)"
-	@echo "START_CONTENT = $(START_CONTENT)"
-	@echo " STOP_CONTENT = $(STOP_CONTENT)"
-	@echo "  DATE_FORMAT = $(DATE_FORMAT)"
-	@echo "  TIDY_CONFIG = $(TIDY_CONFIG)"
-	@echo "       IGNORE = $(IGNORE)"
-	@echo "         KEEP = $(KEEP)"
-	@echo "      PREPARE = $(PREPARE)"
-	@echo "      VERBOSE = $(VERBOSE)"
-	@echo "       SILENT = $(SILENT)"
+	@echo "          SETTINGS = $(SETTINGS)"
+	@echo "            SOURCE = $(SOURCE)"
+	@echo "       DESTINATION = $(DESTINATION)"
+	@echo "          TEMPLATE = $(TEMPLATE)"
+	@echo "     START_CONTENT = $(START_CONTENT)"
+	@echo "      STOP_CONTENT = $(STOP_CONTENT)"
+	@echo "       DATE_FORMAT = $(DATE_FORMAT)"
+	@echo "       TIDY_CONFIG = $(TIDY_CONFIG)"
+	@echo "            IGNORE = $(IGNORE)"
+	@echo "              KEEP = $(KEEP)"
+	@echo "           PREPARE = $(PREPARE)"
+	@echo "           VERBOSE = $(VERBOSE)"
+	@echo "            SILENT = $(SILENT)"
+	@echo "           VERSION = $(VERSION)"
+	@echo " VERSION_TIMESTAMP = $(VERSION_TIMESTAMP)"
 endif
 
 # Show all source files
