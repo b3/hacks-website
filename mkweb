@@ -13,8 +13,8 @@
 
 ##############################################################################
 
-VERSION := 1
-VERSION_TIMESTAMP := 20100910
+VERSION := 2-dev
+VERSION_TIMESTAMP := 20101011
 
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
@@ -314,9 +314,37 @@ sub substitute
     print($$l);
 }
 
-# Run through template file content
+# Macros may be present in source 
+my $$first = 1;
+my $$first_line;
+while (<STDIN>)
+{
+    my ($$k, $$v) = split(/:/, $$_);
+    # If no macros on first line : no macros at all
+    if ($$first)
+    {
+        $$first = 0;
+        if(!defined($$v))
+        {
+            $$first_line = $$_;
+            last;
+        }
+    }
+
+    # Empty line ends macros definition
+    if ($$k eq "\n")
+    {
+        last;
+    }
+    # Get macros from standard input if present
+    $$macros{$$k} = $$v;
+}
+
+# Open file
 open(T, $$template) || die "cannot open $$template";
 my $$inside = 0;
+
+# Run through template file content
 while (<T>)
 {
     # Entering content part
@@ -324,6 +352,10 @@ while (<T>)
     {
         $$inside = 1;
         # Output content part
+        if (defined($$first_line))
+        {
+            &substitute("$$first_line");
+        }
         while (<STDIN>)
         {
             &substitute("$$_");
