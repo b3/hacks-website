@@ -314,16 +314,16 @@ sub substitute
     print($$l);
 }
 
-# Macros may be present in source 
+# Macros may be defined at start of source 
 my $$first = 1;
 my $$first_line;
 while (<STDIN>)
 {
-    my ($$k, $$v) = split(/:/, $$_);
-    # If no macros on first line : no macros at all
+    my ($$k, $$v) = split(/:\s+/, $$_);
     if ($$first)
     {
         $$first = 0;
+        # If no macros on first line : no macros at all
         if(!defined($$v))
         {
             $$first_line = $$_;
@@ -332,11 +332,9 @@ while (<STDIN>)
     }
 
     # Empty line ends macros definition
-    if ($$k eq "\n")
-    {
-        last;
-    }
-    # Get macros from standard input if present
+    last if ($$k eq "\n");
+
+    chomp($$v);
     $$macros{$$k} = $$v;
 }
 
@@ -355,6 +353,7 @@ while (<T>)
         if (defined($$first_line))
         {
             &substitute("$$first_line");
+            undef($$first_line);
         }
         while (<STDIN>)
         {
