@@ -1,1 +1,6 @@
 `grep FIXME *` to get what has to be fixed.
+
+mkweb
+=====
+
+* When a .keep or .ignore file is modified nothing is remake.
