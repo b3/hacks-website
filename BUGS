@@ -4,3 +4,7 @@ mkweb
 =====
 
 * When a .keep or .ignore file is modified nothing is remake.
+
+* check should use DO_CHECK_GNUCMD for cp or else CO_COPY may not work under
+  MacOS X for instance.
+

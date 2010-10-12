@@ -14,7 +14,7 @@
 ##############################################################################
 
 VERSION := 2-dev
-VERSION_TIMESTAMP := 20101011
+VERSION_TIMESTAMP := 20101012
 
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
@@ -85,13 +85,19 @@ all: create
 define DOC
 ##############################################################################
 #
-# In this documentation uppercased words refer to variables defined in mkweb
-# command ; source file root directory is where the command is executed.
+# In this documentation :
+#
+# * uppercased words refer to variables defined in mkweb command file ;
+#
+# * root of source files is where the command is executed.
 #
 # The goal of this command is to use files with `.html` extension (source
 # files) in order to create new files, with same basename and same relative
-# path, below the directory DESTINATION. Existing hierarchy of files is
+# path, under the directory DESTINATION. Existing hierarchy of files is
 # preserved and reproduced.
+#
+# Source files are transformed after being selected. They also maybe prepared
+# before being transformed.
 #
 # Files transformation process
 # ============================
@@ -100,11 +106,11 @@ define DOC
 # START_CONTENT and STOP_CONTENT is replaced by the content of the processed
 # `.html` file.
 #
-# The used template is a file, with same basename as TEMPLATE, which is looked
-# up from the directory containing the processed `.html` file up to the root
-# of source files (which is the directory where the command is executed, also
-# stored in SOURCE). This lookup is done upward and use the first matching
-# template file found or TEMPLATE if none are found in the path.
+# The used template is a file with same basename as TEMPLATE. This file is
+# looked up from the directory containing the processed `.html` file up to the
+# root of source files (which is the directory where the command is executed,
+# also stored in SOURCE). This lookup is done upward and use the first
+# matching template file found or TEMPLATE if none are found in the path.
 #
 # Creation of new `.html` files from sources one is done by a perl script
 # build and stored in PERL_PROG.
@@ -121,9 +127,17 @@ define DOC
 #
 # * @MTIME@ by the last modification date of source file
 #
-# Other strings replacement may be done via HOOK_MACROS. In that case
-# HOOK_MACROS must be a even numbered list of strings. First string is
-# replaced by second, third by fourth, etc.
+# Other strings replacement may be done :
+#
+# * via HOOK_MACROS. In that case HOOK_MACROS must be an even numbered list of
+#   strings. First string is replaced by second, third by fourth, etc.
+#
+# * via string replacement definitions in source file. In that case
+#   definitions must be at the very beginning of the file. A definition is a
+#   single line with a string (the one to be replaced), a colon, one or more
+#   spaces, another string (the replacement). Definitions ends when an empty
+#   line is found. Definitions are removed from the source file before
+#   transformation process.
 #
 # Generated `.html` files are cleaned up by tidy using TIDY_CONFIG config
 # file.
@@ -142,7 +156,7 @@ define DOC
 # Some files are completely ignored by the whole process (nothing is done on
 # them). It is the case for TIDY_CONFIG, TEMPLATE, SETTINGS and files:
 #
-# * which basename is IGNORE, KEEP or same basename as TEMPLATE,
+# * which basename is IGNORE, KEEP, PREPARE or same basename as TEMPLATE,
 #
 # * which name use a space, a single quote, a double quote or a backslash,
 #
@@ -151,14 +165,14 @@ define DOC
 # * which basename is mentioned in the IGNORE file located in their directory,
 #
 # * which basename match a pattern mentioned in an IGNORE file located in one
-#   of the directories below their own directory,
+#   of the directories above their own directory,
 #
 # * which relative path (or directory path) from another directory is
 #   mentioned in the IGNORE file located in this (root) directory,
 # 
 # * which relative path (or directory path) from another directory match a
 #   pattern mentioned in an IGNORE file located in one of the directories
-#   below this (root) directory.
+#   above this (root) directory.
 #
 # Some files with `.html` suffix may be copied as is (without being touched by
 # the whole modification process). It is the case for files:
@@ -166,13 +180,13 @@ define DOC
 # * which basename is mentioned in the KEEP file located in their directory,
 #
 # * which basename match a pattern mentioned in a KEEP file located in one of
-#   the directories below their own directory,
+#   the directories above their own directory,
 #
 # * which relative path (or directory path) from another directory is
 #   mentioned in the KEEP file located in this (root) directory,
 # 
 # * which relative path (or directory path) from another directory match a
-#   pattern mentioned in an KEEP file located in one of the directories below
+#   pattern mentioned in an KEEP file located in one of the directories above
 #   this (root) directory.
 #
 # Patterns for file to ignore or to keep may use 2 differents joker: `*` match
@@ -180,6 +194,18 @@ define DOC
 # character.
 #
 # Files selection is done by a perl script build and stored in PERL_FIND.
+#
+# File preparation process
+# ========================
+#
+# In order to prepare source files special makefiles may be used. Before
+# transformation start and using a deep-first algorithm, every PREPARE files
+# found in a directory under the root of source files is passed to the make
+# command. This call to `make` is done after having moved to the directory
+# holding the PREPARE file.
+#
+# If `.html` file are created by this preparation phase they are considered as
+# source files in the transformation phase.
 #
 ##############################################################################
 endef

@@ -38,8 +38,6 @@ while (<STDIN>)
     $content .= $_;
 }
 
-# Parsing the file
-my $p = HTML::Parser->new(api_version => 3);
 my $page = "";
 my $index = "";
 my %anchors;
@@ -50,10 +48,10 @@ my $indent = sub { "\t" x $curlevel };
 my $oldanchor;
 my $oldstart;
 
+# Parsing the file
+my $p = HTML::Parser->new(api_version => 3);
 $p->handler(start => \&start, "tagname, text");
-$p->handler(default => sub {
-    $page .= join("", @_);
-			}, "text");
+$p->handler(default => sub { $page .= join("", @_); }, "text");
 $p->parse($content);
 $p->eof;
 
