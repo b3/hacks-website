@@ -1,1 +1,7 @@
 `grep FIXME *` to get what has to be fixed.
+
+mkweb
+=====
+
+* check should use DO_CHECK_GNUCMD for cp or else CO_COPY may not work under
+  MacOS X for instance.

@@ -1,7 +1,14 @@
-* Ajouter la prise en charge des commentaires (#) dans les fichiers .keep et
-  .ignore
+mkweb
+=====
+
+* Add support of comments (lines starting by # sign) in .keep and .ignore
+  files
+
+* Add quickstart documentation
+
+* Add a flag to disable tidy use.
 
 * Ajouter la possibilité d'exécuter les makefiles dans les répertoires s'il y
   en a (cf Makefile du noyau linux)
 
-* Fixer les BUGS (grep FIXME *)
+* Fixe BUGS (grep FIXME *)
