@@ -82,6 +82,51 @@ endif
 # Default action to execute
 all: create
 
+define QUICKDOC
+##############################################################################
+# 1. Create a template html file such as :
+#
+#    +-- template.html -----------------------------+
+#    | <html>                                       |
+#    |   <head></head>                              |
+#    |   <body>                                     |
+#    |     <h1>My website</h1>                      |
+#    |     <!-- @DEBUT_CONTENU@ -->                 |
+#    |     <p>Content will come here</p>            |
+#    |     <p>Use this file to set up your CSS.</p> |
+#    |     <!-- @FIND_CONTENU@ -->                  |
+#    |   </body>                                    |
+#    | </html>                                      |
+#    +----------------------------------------------+
+#
+# 2. Create source files containing content such as :
+#
+#    +-- welcome.html -------------------------------------------+
+#    | <p>Welcome guys</p>                                       |
+#    | <p>                                                       |
+#    |    In this website you will not find anything interesting |
+#    |    about <a href="about/me.html">me</a>                   |
+#    | </p>                                                      |
+#    +-----------------------------------------------------------+
+#    
+#    +-- about/me.html ----------------------------------------------------+
+#    | <p>You have been warned !</p>                                       |
+#    | <p>Nothing here go back <a href="@ROOT@/welcome.html">home</a></p>  |
+#    +---------------------------------------------------------------------+
+#    
+# 3. Call the command and specify the destination website directory path :
+#
+#    mkweb DESTINATION=/path/to/your/website/destination
+#
+# 4. That's it your website is created at the right place, with all page
+#    having the same layout taken from your template file, content being
+#    inserted at the right place.
+# 
+# For more details call `./mkweb doc`
+##############################################################################
+endef
+export QUICKDOC
+
 define DOC
 ##############################################################################
 #
@@ -218,6 +263,7 @@ define HELP
 # where ACTION includes
 #
 #     help             show this help message
+#     quick            display a very short howto about $(MAKEFILE)
 #     doc              display documentation
 #     version          display version number
 #
@@ -303,7 +349,7 @@ endif
 # Try to improve performance
 MAKEFLAGS += -rR --no-print-directory
 .PHONY: \
-	help doc \
+	help doc quick \
 	create prepare \
 	check \
 	list-vars list-files list-ignored list-gen \
@@ -707,6 +753,10 @@ DEBUG_DEPS :=
 # Show help message
 help:
 	@echo "$$HELP" | tr -d '#'
+
+# Show very short howto
+quick:
+	@echo "$$QUICKDOC" | tr -d '#'
 
 # Show complete documentation
 doc:

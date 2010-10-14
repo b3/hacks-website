@@ -4,8 +4,6 @@ mkweb
 * Add support of comments (lines starting by # sign) in .keep and .ignore
   files
 
-* Add quickstart documentation
-
 * Add a flag to disable tidy use.
 
 * Fix BUGS (grep FIXME *)
