@@ -8,7 +8,4 @@ mkweb
 
 * Add a flag to disable tidy use.
 
-* Ajouter la possibilité d'exécuter les makefiles dans les répertoires s'il y
-  en a (cf Makefile du noyau linux)
-
-* Fixe BUGS (grep FIXME *)
+* Fix BUGS (grep FIXME *)
