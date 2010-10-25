@@ -680,8 +680,9 @@ endif
 # Hard link a file (or copy it preserving symbolic link) in existing
 # destination directory
 CMD_COPY = \
+  test -L $< && flags=-PR ; \
   mkdir -p $(dir $@) && \
-  cp -l -d -f $< $@ 2>/dev/null 1>&2 || cp -d -f $< $@
+  ln -f $< $@ 2>/dev/null 1>&2 || cp $$flags -f $< $@
 
 # Output all dir containing makefile used to prepare source files
 ifndef FIRST_USE
