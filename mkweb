@@ -91,10 +91,10 @@ define QUICKDOC
 #    |   <head></head>                              |
 #    |   <body>                                     |
 #    |     <h1>My website</h1>                      |
-#    |     <!-- @START_CONTENT@ -->                 |
+#    |     <!-- @DEBUT_CONTENU@ -->                 |
 #    |     <p>Content will come here</p>            |
 #    |     <p>Use this file to set up your CSS.</p> |
-#    |     <!-- @END_CONTENT@ -->                   |
+#    |     <!-- @FIND_CONTENU@ -->                  |
 #    |   </body>                                    |
 #    | </html>                                      |
 #    +----------------------------------------------+
