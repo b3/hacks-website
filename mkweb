@@ -14,7 +14,7 @@
 ##############################################################################
 
 VERSION := 2-dev
-VERSION_TIMESTAMP := 20101012
+VERSION_TIMESTAMP := 20101026
 
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
@@ -45,13 +45,13 @@ endif
 
 # Template content between these marks will be replaced by file content
 ifeq ($(origin START_CONTENT), undefined)
-START_CONTENT := <!-- @DEBUT_CONTENU@ -->
-STOP_CONTENT := <!-- @FIN_CONTENU@ -->
+START_CONTENT := <!-- @START_CONTENT@ -->
+STOP_CONTENT := <!-- @END_CONTENT@ -->
 endif
 
-# DATE_FORMAT should not contain exclamation mark
+# DATE_FORMAT should respect strftime(3) format
 ifeq ($(origin DATE_FORMAT), undefined)
-DATE_FORMAT := '+%Y/%m/%d %H:%M:%S'
+DATE_FORMAT := '%Y/%m/%d %H:%M:%S'
 endif
 
 # Tidy config file
@@ -91,10 +91,10 @@ define QUICKDOC
 #    |   <head></head>                              |
 #    |   <body>                                     |
 #    |     <h1>My website</h1>                      |
-#    |     <!-- @DEBUT_CONTENU@ -->                 |
+#    |     <!-- @START_CONTENT@ -->                 |
 #    |     <p>Content will come here</p>            |
 #    |     <p>Use this file to set up your CSS.</p> |
-#    |     <!-- @FIND_CONTENU@ -->                  |
+#    |     <!-- @END_CONTENT@ -->                   |
 #    |   </body>                                    |
 #    | </html>                                      |
 #    +----------------------------------------------+
@@ -109,10 +109,10 @@ define QUICKDOC
 #    | </p>                                                      |
 #    +-----------------------------------------------------------+
 #    
-#    +-- about/me.html ----------------------------------------------------+
-#    | <p>You have been warned !</p>                                       |
-#    | <p>Nothing here go back <a href="@ROOT@/welcome.html">home</a></p>  |
-#    +---------------------------------------------------------------------+
+#    +-- about/me.html -----------------------------------------------------+
+#    | <p>You have been warned !</p>                                        |
+#    | <p>Nothing here, go back <a href="@ROOT@/welcome.html">home</a></p>  |
+#    +----------------------------------------------------------------------+
 #    
 # 3. Call the command and specify the destination website directory path :
 #
@@ -136,12 +136,15 @@ define DOC
 #
 # * root of source files is where the command is executed.
 #
+# mkweb is just command build as a "simple" makefile which can be processed by
+# GNU make (which should thus be installed in order to run it).
+#
 # The goal of this command is to use files with `.html` extension (source
 # files) in order to create new files, with same basename and same relative
 # path, under the directory DESTINATION. Existing hierarchy of files is
 # preserved and reproduced.
 #
-# Source files are transformed after being selected. They also maybe prepared
+# Source files are transformed after being selected. They also may be prepared
 # before being transformed.
 #
 # Files transformation process
@@ -154,8 +157,8 @@ define DOC
 # The used template is a file with same basename as TEMPLATE. This file is
 # looked up from the directory containing the processed `.html` file up to the
 # root of source files (which is the directory where the command is executed,
-# also stored in SOURCE). This lookup is done upward and use the first
-# matching template file found or TEMPLATE if none are found in the path.
+# also stored in SOURCE). This lookup process is done upward and use the first
+# matching template file found, or TEMPLATE if none are found in the path.
 #
 # Creation of new `.html` files from sources one is done by a perl script
 # build and stored in PERL_PROG.
@@ -252,6 +255,17 @@ define DOC
 # If `.html` file are created by this preparation phase they are considered as
 # source files in the transformation phase.
 #
+# Customisation
+# =============
+#
+# Customisation of almost everything in the command may be done by modifying
+# variables. This can be done :
+#
+# * through command using `VARIABLE=value` form parameters
+#
+# * through the SETTINGS file which may simply respect makefile syntax. The
+#   simplest case is to fix variables through `VARIABLE = value` form line.
+#
 ##############################################################################
 endef
 export DOC
@@ -304,6 +318,11 @@ endif
 # Temporary perl find program
 ifeq ($(origin PERL_FIND), undefined)
 PERL_FIND := $(PREFIX)-find
+endif
+
+# Temporary perl date program
+ifeq ($(origin PERL_DATE), undefined)
+PERL_DATE := $(PREFIX)-date
 endif
 
 # Temporary flag to ensure needed commands have been checked 
@@ -568,10 +587,30 @@ sub compare
     my $$c = ($$b =~ tr{/}{}) - ($$a =~ tr{/}{});
     return $$c ? $$c : $$a cmp $$b;
 }
-
 #-----------------------------------------------------------------------------
 endef
 export PERL_FIND_FILE
+endif
+
+# Perl script to get formatted timestamp for today (-) or for specified file
+ifdef FIRST_USE
+define PERL_DATE_FILE
+#!/usr/bin/perl
+#-----------------------------------------------------------------------------
+use POSIX qw(strftime);
+
+my $$file = shift(@ARGV);
+
+my $$format = join(" ", @ARGV);
+
+my $$epoch;
+if ($$file eq "-") { $$epoch = time() }
+elsif (-e $$file) { ($$a,$$a,$$a,$$a,$$a,$$a,$$a,$$a,$$epoch,$$a,$$a,$$a) = stat($$file); }
+
+print(strftime($$format,localtime($$epoch)));
+#-----------------------------------------------------------------------------
+endef
+export PERL_DATE_FILE
 endif
 
 ##############################################################################
@@ -584,8 +623,8 @@ ifndef FIRST_USE
 file = $(notdir $@)
 dir = $(subst $(DESTINATION)/,,$(dir $@))
 root = $(shell echo $(subst $(SOURCE),@,$(dir $<)) | sed -e 's![^@/]\+!..!g' -e 'y/@/./' -e 's!/$$!!' -e 's!^\./!!')
-date = $(shell date $(DATE_FORMAT))
-mtime = $(shell date -r $< $(DATE_FORMAT))
+date = $(shell perl $(PERL_DATE) - $(DATE_FORMAT))
+mtime = $(shell perl $(PERL_DATE) $< $(DATE_FORMAT))
 
 exist = $(subst $(1)/,,$(wildcard $(1)/$(2)))
 name2bre = $(subst .,\.,$(subst [,\[,$(subst ],\],$(subst ^,\^,$(subst $$,\$$,$(subst *,\*,$(subst \,\\,$(1))))))))
@@ -673,7 +712,7 @@ endif
 ifndef FIRST_USE
 CMD_AFTER = \
   $(if $(value HOOK_AFTER),$(HOOK_AFTER) |) \
-  $(if $(value CMD_TIDY),$(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog),cat |) \
+  $(if $(value CMD_TIDY),$(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog),cat) \
   >$@ || true
 endif
 
@@ -730,7 +769,7 @@ $(ECHO) "     COPY $(dir)$(file)" ; \
   $(CMD_COPY) $(OUT)
 
 # List of auxiliary programs need for the creation process
-ALL_PROGS := $(PERL_PROG) $(PERL_FIND)
+ALL_PROGS := $(PERL_PROG) $(PERL_FIND) $(PERL_DATE)
 PROGS = $(if $(value HOOK_PROGS),$(HOOK_PROGS),$(ALL_PROGS))
 
 # List of all source files to process
@@ -794,10 +833,10 @@ check: $(CHECKED) $(PROGS)
 $(CHECKED):
 	$(Q)$(call DO_CHECK_CMD,which)
 	$(Q)$(call DO_CHECK_CMD,perl)
-	$(Q)$(call DO_CHECK_GNUCMD,date)
 	$(Q)$(call DO_CHECK_CMD,sed)
 	$(Q)$(call DO_CHECK_CMD,tr)
 	$(Q)$(call DO_CHECK_CMD,tidy)
+	$(Q)$(call DO_CHECK_FILE,$(TIDY_CONFIG))
 	$(Q)$(call DO_CHECK_CMD,true)
 	$(Q)$(call DO_CHECK_CMD,false)
 	$(Q)$(call DO_CHECK_FILE,$(TEMPLATE))
@@ -811,6 +850,11 @@ $(PERL_PROG): $(COMMAND)
 # Generate perl find program
 $(PERL_FIND): $(COMMAND)
 	$(Q)echo "$$PERL_FIND_FILE" >$@
+	$(Q)chmod +x $@
+
+# Generate perl date program
+$(PERL_DATE): $(COMMAND)
+	$(Q)echo "$$PERL_DATE_FILE" >$@
 	$(Q)chmod +x $@
 
 # Show used variables
@@ -918,6 +962,7 @@ debug: list-vars
 	@echo "       PREFIX = $(PREFIX)"
 	@echo "    PERL_PROG = $(PERL_PROG)"
 	@echo "    PERL_FIND = $(PERL_FIND)"
+	@echo "    PERL_DATE = $(PERL_DATE)"
 	@echo "      CHECKED = $(CHECKED)"
 	@echo "        SHELL = $(SHELL)"
 	@echo "            Q = $(Q)"
