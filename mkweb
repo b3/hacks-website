@@ -13,8 +13,8 @@
 
 ##############################################################################
 
-VERSION := 2-dev
-VERSION_TIMESTAMP := 20101026
+VERSION := 2
+VERSION_TIMESTAMP := 20110106
 
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
