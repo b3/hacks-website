@@ -136,7 +136,7 @@ define DOC
 #
 # * root of source files is where the command is executed.
 #
-# mkweb is just command build as a "simple" makefile which can be processed by
+# mkweb is a command build as a "simple" makefile which can be processed by
 # GNU make (which should thus be installed in order to run it).
 #
 # The goal of this command is to use files with `.html` extension (source
@@ -261,7 +261,7 @@ define DOC
 # Customisation of almost everything in the command may be done by modifying
 # variables. This can be done :
 #
-# * through command using `VARIABLE=value` form parameters
+# * through command line using `VARIABLE=value` form parameters
 #
 # * through the SETTINGS file which may simply respect makefile syntax. The
 #   simplest case is to fix variables through `VARIABLE = value` form line.
