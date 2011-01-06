@@ -4,6 +4,19 @@ mkweb
 * Add support of comments (lines starting by # sign) in .keep and .ignore
   files
 
-* Add a flag to disable tidy use.
+* Add a flag to disable tidy use
 
 * Fix BUGS (grep FIXME *)
+
+* Remove hard-link or add a simple way to toggle hard-link/real copy of html files
+
+  When TEMPLATE is more recent than an .html file which need to be keeped and
+  which is on the same filesystem as the destination file (thus is hard-linked
+  only) the source file is reprocessed (KEEP_COPY). This may be time
+  consuming.
+  
+  Every time a TEMPLATE is modified, such source files should be restamped so
+  that they are newer. This is not really a bug, but more a kind of a bad
+  behavior, or side effect of the use of hard link.
+
+
