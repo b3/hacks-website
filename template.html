@@ -11,6 +11,51 @@
     <link rel='icon' href='@ROOT@/images/glider.ico' type='image/ico'/>
     <link rel='stylesheet' href='@ROOT@/styles/styles.css' type='text/css' media='all' title='Main style'/>
     <style type='text/css'>
+html {
+	  background-color: silver;
+}
+#menu {font-family: sans-serif; width:750px; height:100px; position:relative; font-size:100%;}
+#menu ul li {display:block; text-decoration:none; color:#000; width:104px; height:20px; text-align:center; color:#fff; border:1px solid #fff; background:#710069; line-height:20px; overflow:hidden; margin: .1em;}
+#menu ul li a {display:block; text-decoration:none; color:#000;width:104px; height:20px; text-align:center; color:#fff; background:#710069; line-height:20px; overflow:hidden;}
+#menu ul {padding:0; margin:0; list-style: none;}
+#menu ul li {float:left; position:relative;}
+#menu ul li ul {display: block;}
+#menu ul li:hover ul { display:block; position:absolute; top:21px; left:0; width:105px;}
+#menu ul li:hover, #menu ul li:hover a {color:#fff; background:#36f;}
+#menu ul li:hover ul li a {display:block; background:#ddd; color:#000;}
+#menu ul li:hover ul li a:hover {background:#6fc; color:#000;}
+#menu ul li:hover ul li:hover ul {display:block; position:absolute; left:105px; top:0;}
+#menu ul li:hover ul li:hover ul.left {left:-105px;}
+
+#content {
+	  width: 80%;
+	  background: white;
+	  color: black;
+	  margin: 3em auto 0 auto;
+	  padding: 0 2em 0 2em;
+	  border: 1px solid #cccccc;
+}
+
+#ours {
+	  font: normal 75% sans-serif;
+	  clear: both;
+	  text-align: center;
+	  color: gray;
+	  margin: 1em 0 1em 0;
+	  padding: 0 0 0 0;
+}
+#ours li {
+	  list-style: none;
+	  display:inline;
+}
+
+pre { 
+	  border-width: 1px;
+	  border-style: dotted;
+	  border-color: black;
+	  background-color: silver;
+	  padding: 1em;
+}
     </style>
     <title>@TITLE@</title>
   </head>
@@ -21,7 +66,23 @@
 
     <div id='menu'>
       <ul>
-        <li><a href='@ROOT@/index.html'>Home</a></li>
+        <li><a href='@ROOT@/index.html'>One</a></li>
+        <li>
+		  Two
+		  <ul>
+			<li><a href='@ROOT@/index.html'>Two</a></li>
+			<li><a href='@ROOT@/index.html'>Two again...</a></li>
+			<li><a href='@ROOT@/index.html'>...and again</a></li>
+		  </ul>
+		</li>
+        <li><a href='@ROOT@/index.html'>Three</a></li>
+        <li>
+		  Four
+		  <ul>
+			<li><a href='@ROOT@/index.html'>4 is four</a></li>
+			<li><a href='@ROOT@/index.html'>Four Two</a></li>
+		  </ul>
+		</li>
       </ul>
     </div>    
 
@@ -50,6 +111,22 @@
         mi. Etiam a odio non nibh tincidunt consectetur. Suspendisse
         turpis. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
       </p>
+
+	  <pre>
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus
+vehicula, nulla ut hendrerit laoreet, lorem mi facilisis ipsum, eget
+dignissim mauris lacus sed neque. Curabitur at ipsum. Nulla
+lacus. Aliquam erat volutpat. Suspendisse lorem. Proin vehicula augue
+nec mi euismod ornare. Mauris ac augue id urna volutpat
+faucibus. Vivamus sed eros quis pede facilisis dignissim. In non
+nunc. Integer ut pede. Nulla sed felis. Phasellus eget nisi ut augue
+viverra dignissim. Cum sociis natoque penatibus et magnis dis
+parturient montes, nascetur ridiculus mus. Maecenas porttitor. Integer
+lorem nisi, ultrices non, tristique sit amet, adipiscing quis,
+nisl. Integer vehicula nisi non lorem. Aliquam cursus arcu non
+mi. Etiam a odio non nibh tincidunt consectetur. Suspendisse
+turpis. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+	  </pre>
 
       <h1>
         Heading
