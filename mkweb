@@ -14,7 +14,7 @@
 ##############################################################################
 
 VERSION := 3-dev
-VERSION_TIMESTAMP := 20110112
+VERSION_TIMESTAMP := 20110113
 
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
