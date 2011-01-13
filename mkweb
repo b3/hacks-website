@@ -84,8 +84,10 @@ ifeq ($(origin HARD_LINK), undefined)
 HARD_LINK := 0
 endif
 
-# Default action to execute
-all: create
+# Default action to execute (indirect so that it can be adjusted in SETTINGS)
+all: default
+
+default: create
 
 define QUICKDOC
 ##############################################################################
