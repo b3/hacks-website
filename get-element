@@ -1,0 +1,159 @@
+#!/usr/bin/perl
+# Print specified HTML elements data (or attribute value)
+
+# Copyright (C) 2010-2011 Bruno BEAUFILS <bruno@boulgour.com>
+#
+# This software comes with ABSOLUTELY NO WARRANTY.
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation in its version 2.
+# See the README or COPYING file for details.
+
+##############################################################################
+
+use strict;
+use warnings;
+use Getopt::Long;
+use HTML::Parser;
+
+# Documentation message 
+sub usage {
+    print <<EOF;
+
+usage: $0 ATTR VALUE [--element ELT] [--attribut ATTRQ]
+
+Print element content (or an attribut value) from HTML chunks read from
+standard input.
+
+Searched element must have ATTR attribut set to VALUE. If ELT is specified
+searched element must be of that kind.
+
+The full element content is printed except if ATTRQ is specified, in which
+case only this attribute value is printed.
+
+EOF
+}
+
+# Check options
+my $elt_name = undef;
+my $attr_only = undef;
+if (!GetOptions('element=s'=>\$elt_name, 'attribut=s'=>\$attr_only))
+{
+    usage();
+    exit(1);
+}
+
+# Get required arguments
+if ($#ARGV != 1)
+{
+    usage();
+    exit(1);
+}
+my $elt_attr = $ARGV[0];
+my $elt_value = $ARGV[1];
+
+# Prepare the parser
+my $p = HTML::Parser->new(api_version => 3);
+$p->empty_element_tags(1);
+$p->unbroken_text(1);
+$p->handler(start => \&start_outside, "tagname, attr");
+$p->handler(default => \&block);
+
+# We'd like to clean up before printing it (memory is cheaper than I/O anyway)
+my $out = ''; 
+
+# Parse data from standard input
+$p->parse_file(*STDIN);
+$p->eof;
+
+# Print result
+print(clean($out));
+
+exit(0);
+
+##############################################################################
+
+my $elt_count;
+
+# Raised for each start tag of an element while looking for a good one
+sub start_outside {
+    my ($tag, $attr) = @_;
+
+    if (defined($attr->{$elt_attr}) && $attr->{$elt_attr} =~ /^$elt_value$/i)
+    {
+        if ((defined($elt_name) && $tag =~ /^$elt_name$/i) ||
+            !defined($elt_name))
+        {
+            $elt_count += 1;
+            # Only searched attribut is printed...
+            if (defined($attr_only))
+            {
+                $out .= $attr->{$attr_only};
+            }
+            # ...or full element content
+            else
+            {
+                $p->handler(start => \&start_inside, "text");
+                $p->handler(end => \&end_inside, "text");
+                $p->handler(default => \&pass_through, "text, event");
+            }
+        }
+    }
+}
+
+# When inside searched element we count element when they start and print them
+sub start_inside {
+    my ($text) = @_;
+
+    $elt_count += 1;
+    
+    $out .= $text;
+}
+
+# Search for next one only when leaving found element
+sub end_inside {
+    my ($text) = @_;  
+
+    $elt_count -= 1;
+
+    if ($elt_count == 0)
+    {
+        $p->handler(start => \&start_outside, "tagname, attr");
+        $p->handler(end=>undef);
+        $p->handler(default => \&block);
+    }
+    else
+    {
+        $out .= $text;
+    }
+}
+
+# Output read text as is
+sub pass_through {
+    my ($text,$event) = @_;
+
+    $out .= $text;
+}
+
+# Forget read text
+sub block {
+    return;
+}
+
+# Clean up text read a little bit
+sub clean {
+    my ($t) = @_;
+
+    # Since we removed start and end tag of chosen elements ...
+    # ... carriage return just after this start tag is ugly
+    $t =~ s/^\n//m;
+    # ... as well as indent chars just before this end tag
+    $t =~ s/\n[\t ]+$/\n/m;
+
+#    $t =~ s/ +/ /g;
+#    $t =~ s/\t+/  /g;
+
+    return $t;
+}
+
+##############################################################################

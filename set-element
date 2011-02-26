@@ -1,0 +1,146 @@
+#!/usr/bin/perl
+# Replace specified HTML elements data with some given content
+
+# Copyright (C) 2011 Bruno BEAUFILS <bruno@boulgour.com>
+
+# This software comes with ABSOLUTELY NO WARRANTY.
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation in its version 2.
+# See the README or COPYING file for details.
+
+##############################################################################
+
+use strict;
+use warnings;
+use Getopt::Long;
+use HTML::Parser;
+
+# Documentation message 
+sub usage {
+    print <<EOF;
+
+usage: $0 ATTR VALUE [ --file] TEXT...
+
+Replace content of elements with ATTR attribut set to VALUE from HTML chunks
+read from standard input.
+
+TEXT is inserted inside such elements, except if --file is used in which case
+it is used as name of files from which inserted content is read.
+
+EOF
+}
+
+# Check option
+my $use_files = 0;
+if (!GetOptions('file'=>\$use_files))
+{
+    usage();
+    exit(1);
+}
+
+# Get required arguments
+if ($#ARGV < 2)
+{
+    usage();
+    exit(1);
+}
+my $elt_attr = shift(@ARGV);
+my $elt_value = shift(@ARGV);
+my $elt_content = '';
+if ($use_files)
+{
+    my @content = <ARGV>;
+    $" = ''; 
+    $elt_content = "@content";
+}
+else
+{
+    ($elt_content) = @ARGV;
+}
+
+# Prepare the parser
+my $p = HTML::Parser->new(api_version => 3);
+$p->empty_element_tags(1);
+$p->unbroken_text(1);
+$p->handler(start => \&start_outside, "tagname, attr, text");
+$p->handler(default => \&pass_through, "text");
+
+# We'd like to clean up before printing it (memory is cheaper than I/O anyway)
+my $out = ''; 
+
+# Parse data from standard input
+$p->parse_file(*STDIN);
+$p->eof;
+
+# Print result
+print(clean($out));
+
+exit(0);
+
+##############################################################################
+
+my $elt_count;
+my $elt_name;
+
+# Raised for each start tag of an element while looking for a good one
+sub start_outside {
+    my ($tag, $attr, $text) = @_;
+
+    if (defined($attr->{$elt_attr}) && $attr->{$elt_attr} =~ /^$elt_value$/i)
+    {
+        $elt_name = $tag;
+        $elt_count += 1;
+        $p->handler(start => \&start_inside);
+        $p->handler(end => \&end_inside, "tagname, text");
+        $p->handler(default => \&block);
+    }
+    $out .= $text;
+}
+
+# When inside searched element we count element when they start
+sub start_inside {
+    $elt_count += 1;
+}
+
+# Tags should be well nested and identical to the starting one
+sub end_inside {
+    my ($tag, $text) = @_;  
+    
+    $elt_count -= 1;
+
+    if ($elt_count == 0 && $tag =~ /^$elt_name$/i)
+    {
+
+        # Prepare parser for another search
+        $p->handler(start => \&start_outside, "tagname, attr, text");
+        $p->handler(end => undef);
+        $p->handler(default => \&pass_through, "text");
+  
+        # Print content and end tag
+        $out .= $elt_content;
+        $out .= $text;
+    }
+}
+
+# Output read text as is
+sub pass_through {
+    my ($text) = @_;
+
+    $out .= $text;
+}
+
+# Forget read text
+sub block {
+    return;
+}
+
+# Clean up text read a little bit
+sub clean {
+    my ($t) = @_;
+
+#   $t =~ s/^\n//m;
+
+    return $t;
+}
+##############################################################################
