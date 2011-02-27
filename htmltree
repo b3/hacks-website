@@ -1,0 +1,174 @@
+#!/usr/bin/perl
+# Print HTML tree
+
+# Copyright (C) 2011 Bruno BEAUFILS <bruno@boulgour.com>
+
+# This software comes with ABSOLUTELY NO WARRANTY.
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation in its version 2.
+# See the README or COPYING file for details.
+
+##############################################################################
+
+use strict;
+use warnings;
+use Getopt::Long;
+use HTML::TreeBuilder;
+
+# Documentation message 
+sub usage {
+    print <<EOF;
+
+usage: $0  [-a|--attr] [-v|--val]
+
+Print HTML elements tree from HTML chunks read from standard input.
+
+Use -a or --attr to print attributes name list for each element. Use -v or
+--val to print values of each attributes (implies --attr).
+
+EOF
+}
+
+# Check options
+my $elt_only = 0;
+my $attr_only = 0;
+if (!GetOptions('attr'=>\$elt_only,
+                'val'=>\$attr_only))
+{
+    usage();
+    exit(1);
+}
+$attr_only = ! $attr_only;
+$elt_only = ! $elt_only;
+$elt_only = 0 if (!$attr_only);
+
+# Prepare the tree
+my $tree = HTML::TreeBuilder->new();
+$tree->ignore_text(1);
+$tree->empty_element_tags(1);
+$tree->unbroken_text(1);
+
+# We'd like to clean up before printing it (memory is cheaper than I/O anyway)
+my $out = ''; 
+
+my $prefix = '';
+
+# Parse the HTML from standard input and create the corresponding HTML tree
+$tree->parse_file(*STDIN);
+$tree->elementify();
+
+# Prepare tree representation
+print_element($tree, '');
+print_tree($tree, '');
+
+# Delete the tree
+$tree->delete;
+
+# Print result
+print($out);
+
+exit(0);
+
+##############################################################################
+
+# Print a tree of HTML elements (text segment are not printed)
+sub print_tree {
+    my ($root, $prefix) = @_;
+
+    if (!defined($root) ||
+        !ref($root))
+    {
+        return;
+    }
+
+    my @nodes = ($root->content_list());
+    my $node;
+
+    while (@nodes != 1)
+    {
+        $node = shift(@nodes); 
+        if (ref($node))
+        {
+            print_element($node, "$prefix", 0);
+            if (!$node->is_empty())
+            {               
+                print_tree($node, "$prefix|   ");
+            }
+        }
+    }
+    $node = shift(@nodes); 
+    if (ref($node))
+    {
+        print_element($node, "$prefix", 1);
+        if (!$node->is_empty())  
+        {
+            print_tree($node, "$prefix    ");
+        }
+    }
+}
+
+# Print a given element with attributes list
+sub print_element {
+    my ($node, $prefix, $last) = @_;
+    
+    my $tag = $node->tag();
+            
+    if ($tag eq '~comment' ||
+        $tag eq '~declaration' ||
+        $tag eq '~pi' ||
+        $tag eq '~literal')
+    {
+        return;
+    }
+        
+    my @attrs = ($node->all_external_attr_names());
+
+    my $type;
+
+    # Set last prefix (just before element name)
+    if (!defined($last))
+    {
+        $type = "";
+    }
+    elsif ($last)
+    {
+        $type = "`-- ";
+    }
+    else
+    {
+        $type = "|-- ";
+    }
+
+    # Print element name
+    $out .= "$prefix$type".$node->tag();
+
+    # Print attribute list
+    if (!$elt_only && @attrs != 0)
+    {
+        # Print only attribute list
+        if ($attr_only)
+        {
+            $out .= " (@attrs)";
+        }
+        # Print attribute/values list
+        else
+        {
+# FIXME: try to find an elegant way of presenting attribute by line
+#           my $c = "|";
+#           $c = " " if $last;
+#
+#           my $d = " ";
+#           $d = "|" if defined($last) && !$node->is_empty();
+#
+#           @attrs = map($_ = "\n$prefix"."$c   "."$d  . $_=".$node->attr($_), @attrs);
+#           $" = "";
+#           $out .= "@attrs";
+            @attrs = map($_ = "$_=\'".$node->attr($_)."'", @attrs);
+            $out .= " (@attrs)";
+        }
+    }
+    $out .= "\n";
+}
+
+##############################################################################
