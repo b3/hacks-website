@@ -20,7 +20,7 @@ use HTML::Parser;
 sub usage {
     print <<EOF;
 
-usage: $0 ATTR VALUE [ --file] TEXT...
+usage: $0 ATTR VALUE [-f|--file] TEXT...
 
 Replace content of elements with ATTR attribut set to VALUE from HTML chunks
 read from standard input.
