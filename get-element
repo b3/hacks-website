@@ -20,7 +20,7 @@ use HTML::Parser;
 sub usage {
     print <<EOF;
 
-usage: $0 ATTR VALUE [--element ELT] [--attribut ATTRQ]
+usage: $0 ATTR VALUE [-e ELT|--element ELT] [-a ATTRQ|--attribut ATTRQ]
 
 Print element content (or an attribut value) from HTML chunks read from
 standard input.

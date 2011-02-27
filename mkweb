@@ -13,8 +13,8 @@
 
 ##############################################################################
 
-VERSION := 2
-VERSION_TIMESTAMP := 20110106
+VERSION := 3-dev
+VERSION_TIMESTAMP := 20110113
 
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
@@ -79,8 +79,15 @@ ifeq ($(origin SILENT), undefined)
 SILENT := 0
 endif
 
-# Default action to execute
-all: create
+# Try to hard link files instead of copying it if HARD_LINK is set to 1
+ifeq ($(origin HARD_LINK), undefined)
+HARD_LINK := 0
+endif
+
+# Default action to execute (indirect so that it can be adjusted in SETTINGS)
+all: default
+
+default: create
 
 define QUICKDOC
 ##############################################################################
@@ -265,6 +272,16 @@ define DOC
 #
 # * through the SETTINGS file which may simply respect makefile syntax. The
 #   simplest case is to fix variables through `VARIABLE = value` form line.
+#
+# Copy operations may be replace by hard link ones. This is the case if
+# HARD_LINK is set to 1 and if it the underlying operating system allows it
+# (destination is on the same filesystem as source). That may save some space
+# for big websites. In case hard link is used, one should however remember
+# that every `.html` destination files depends on TEMPLATE. For `.html` files
+# which need to be kept as is, that means, for instance, that if TEMPLATE is
+# more recent than any such `.html` kept file, each time the command is called
+# every such file will be processed : destination *is* source when hard
+# linked.
 #
 ##############################################################################
 endef
@@ -716,12 +733,19 @@ CMD_AFTER = \
   >$@ || true
 endif
 
-# Hard link a file (or copy it preserving symbolic link) in existing
+# Copy a file preserving symbolic link (or hard link it, if asked) in existing
 # destination directory
+ifeq ($(HARD_LINK),0)
+CMD_COPY = \
+  test -L $< && flags=-PR ; \
+  mkdir -p $(dir $@) && \
+  cp $$flags -f $< $@
+else
 CMD_COPY = \
   test -L $< && flags=-PR ; \
   mkdir -p $(dir $@) && \
   ln -f $< $@ 2>/dev/null 1>&2 || cp $$flags -f $< $@
+endif
 
 # Output all dir containing makefile used to prepare source files
 ifndef FIRST_USE
