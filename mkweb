@@ -54,6 +54,11 @@ ifeq ($(origin DATE_FORMAT), undefined)
 DATE_FORMAT := '%Y/%m/%d %H:%M:%S'
 endif
 
+# Clean up generated HTML file if USE_TIDY is set to 1
+ifeq ($(origin USE_TIDY), undefined)
+USE_TIDY := 1
+endif
+
 # Tidy config file
 ifeq ($(origin TIDY_CONFIG), undefined)
 TIDY_CONFIG := $(SOURCE)/.tidyrc
@@ -194,8 +199,9 @@ define DOC
 #   line is found. Definitions are removed from the source file before
 #   transformation process.
 #
-# Generated `.html` files are cleaned up by tidy using TIDY_CONFIG config
-# file.
+# Generated `.html` files are cleaned up by tidy unless USE_TIDY is set to
+# 0. tidy uses TIDY_CONFIG config file, which is set by default to
+# SOURCE/.tidyrc.
 #
 # Content may be filtered before processing, via HOOK_BEFORE, or after (but
 # before tidy), via HOOK_AFTER.
@@ -704,7 +710,9 @@ CMD_TEMPLATE = \
 endif
 
 # Tidy HTML from standard input to standard output
+ifeq ($(USE_TIDY),1)
 CMD_TIDY := tidy -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG))
+endif
 
 # Send dependency content to standard output (and filter it if asked)
 ifndef FIRST_USE
@@ -859,8 +867,10 @@ $(CHECKED):
 	$(Q)$(call DO_CHECK_CMD,perl)
 	$(Q)$(call DO_CHECK_CMD,sed)
 	$(Q)$(call DO_CHECK_CMD,tr)
+ifeq ($(USE_TIDY),1)
 	$(Q)$(call DO_CHECK_CMD,tidy)
 	$(Q)$(call DO_CHECK_FILE,$(TIDY_CONFIG))
+endif
 	$(Q)$(call DO_CHECK_CMD,true)
 	$(Q)$(call DO_CHECK_CMD,false)
 	$(Q)$(call DO_CHECK_FILE,$(TEMPLATE))
@@ -898,6 +908,7 @@ list-vars:
 	@echo "            IGNORE = $(IGNORE)"
 	@echo "              KEEP = $(KEEP)"
 	@echo "           PREPARE = $(PREPARE)"
+	@echo "          USE_TIDY = $(USE_TIDY)"
 	@echo "           VERBOSE = $(VERBOSE)"
 	@echo "            SILENT = $(SILENT)"
 	@echo "           VERSION = $(VERSION)"
@@ -978,7 +989,7 @@ ifdef FIRST_USE
 debug: $(PROGS)
 	$(Q)$(CMD_MAKE) $@
 else
-debug: #list-vars
+debug: list-vars
 	@echo ''
 	@echo '     MAKEFILE = $(MAKEFILE)'
 	@echo '      COMMAND = $(COMMAND)'
