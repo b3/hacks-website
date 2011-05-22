@@ -5,7 +5,7 @@ mkweb
 
 * when a .keep or .ignore file is modified nothing is remade.
 
-* check should use DO_CHECK_GNUCMD for cp or else CO_COPY may not work under
+* check should use DO_CHECK_GNUCMD for cp or else DO_COPY may not work under
   MacOS X for instance.
 
 * when files list is too long list-build does not work due to shell line

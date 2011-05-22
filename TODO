@@ -1,3 +1,14 @@
+misc
+====
+
+* write some new tools : 
+
+   + generate_menu
+
+     Parameters may be max-depth 
+
+   + generate_breadcrumbs
+
 mkweb
 =====
 
