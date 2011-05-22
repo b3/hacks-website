@@ -15,8 +15,6 @@ mkweb
 * Add support of comments (lines starting by # sign) in .keep and .ignore
   files
 
-* Add a flag to disable tidy use
-
 * Fix BUGS (grep FIXME *)
 
 * Remove hard-link or add a simple way to toggle hard-link/real copy of html files
