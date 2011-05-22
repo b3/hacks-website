@@ -978,36 +978,45 @@ ifdef FIRST_USE
 debug: $(PROGS)
 	$(Q)$(CMD_MAKE) $@
 else
-debug: list-vars
-	@echo ""
-	@echo "     MAKEFILE = $(MAKEFILE)"
-	@echo "      COMMAND = $(COMMAND)"
-	@echo "          TMP = $(TMP)"
-	@echo "       PREFIX = $(PREFIX)"
-	@echo "    PERL_PROG = $(PERL_PROG)"
-	@echo "    PERL_FIND = $(PERL_FIND)"
-	@echo "    PERL_DATE = $(PERL_DATE)"
-	@echo "      CHECKED = $(CHECKED)"
-	@echo "        SHELL = $(SHELL)"
-	@echo "            Q = $(Q)"
-	@echo "         ECHO = $(ECHO)"
-	@echo "          OUT = $(OUT)"
-	@echo "         MAKE = $(MAKE)"
-	@echo "    MAKEFLAGS = $(MAKEFLAGS)"
-	@echo ""
-	@echo " source files = see $(PREFIX)-files"
+debug: #list-vars
+	@echo ''
+	@echo '     MAKEFILE = $(MAKEFILE)'
+	@echo '      COMMAND = $(COMMAND)'
+	@echo '          TMP = $(TMP)'
+	@echo '       PREFIX = $(PREFIX)'
+	@echo '    PERL_PROG = $(PERL_PROG)'
+	@echo '    PERL_FIND = $(PERL_FIND)'
+	@echo '    PERL_DATE = $(PERL_DATE)'
+	@echo '      CHECKED = $(CHECKED)'
+	@echo '        SHELL = $(SHELL)'
+	@echo '            Q = $(Q)'
+	@echo '         ECHO = $(ECHO)'
+	@echo '          OUT = $(OUT)'
+	@echo '         MAKE = $(MAKE)'
+	@echo '    MAKEFLAGS = $(MAKEFLAGS)'
+	@echo ''
+	@echo '     CMD_MAKE = $(CMD_MAKE)'
+	@echo '     CMD_FIND = $(CMD_FIND)'
+	@echo '    CMD_FILES = '$(CMD_FILES)
+	@echo ''
+	@echo '  HOOK_BEFORE = $(HOOK_BEFORE)'
+	@echo '   CMD_BEFORE = $(value CMD_BEFORE)'
+	@echo '     CMD_HTML = $(value CMD_HTML)'
+	@echo '   HOOK_AFTER = $(HOOK_AFTER)'
+	@echo '    CMD_AFTER = $(value CMD_AFTER)'
+	@echo '     CMD_TIDY = $(value CMD_TIDY)'
+	@echo '      DO_HTML = $(value DO_HTML)'
+	@echo ''
+	@echo ' PREPARE_DIRS = $(PREPARE_DIRS)'
+	@echo ''
+	@echo ' source files = see $(PREFIX)-files'
 	@$(CMD_MAKE) list-files > $(PREFIX)-files
-	@echo "ignored files = see $(PREFIX)-ignored"
+	@echo 'ignored files = see $(PREFIX)-ignored'
 	@$(CMD_MAKE) list-ignored > $(PREFIX)-ignored
-	@echo "  build files = see $(PREFIX)-build"
+	@echo '  build files = see $(PREFIX)-build'
 	@$(CMD_MAKE) list-build > $(PREFIX)-build
-	@echo " prepare dirs = see $(PREFIX)-prepare"
+	@echo ' prepare dirs = see $(PREFIX)-prepare'
 	@$(CMD_MAKE) list-prepare > $(PREFIX)-prepare
-	@echo ""
-	@echo "     CMD_MAKE = "$(CMD_MAKE)
-	@echo "     CMD_FIND = "$(CMD_FIND)
-	@echo "    CMD_FILES = "$(CMD_FILES)
-	@echo " PREPARE_DIRS = "$(PREPARE_DIRS)
 endif
 
 # Local Variables:
