@@ -709,8 +709,8 @@ CMD_TIDY := tidy -q $(if $(TIDY_CONFIG),-config $(TIDY_CONFIG))
 # Send dependency content to standard output (and filter it if asked)
 ifndef FIRST_USE
 CMD_BEFORE = \
-  cat $< \
-  $(if $(value HOOK_BEFORE),| $(HOOK_BEFORE))
+  < $< \
+  $(if $(value HOOK_BEFORE),$(HOOK_BEFORE) |)
 endif
 
 # Send template with content replaced by standard input to standard output
@@ -728,8 +728,8 @@ endif
 # Filter standard input if asked, tidy and then save it to destination file
 ifndef FIRST_USE
 CMD_AFTER = \
-  $(if $(value HOOK_AFTER),$(HOOK_AFTER) |) \
-  $(if $(value CMD_TIDY),$(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog),cat) \
+  $(if $(value HOOK_AFTER),| $(HOOK_AFTER)) \
+  $(if $(value CMD_TIDY),| $(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog),cat) \
   >$@ || true
 endif
 
@@ -783,7 +783,7 @@ DO_HTML = \
   else \
     $(ECHO) -e "  DO_HTML (on $(CMD_TEMPLATE)) $(dir)$(file)" ; \
     mkdir -p $(dir $@) && \
-    $(CMD_BEFORE) | $(CMD_HTML) | $(CMD_AFTER) ; \
+    $(CMD_BEFORE) $(CMD_HTML) $(CMD_AFTER) ; \
   fi
 endif
 
