@@ -737,7 +737,7 @@ endif
 ifndef FIRST_USE
 CMD_AFTER = \
   $(if $(value HOOK_AFTER),| $(HOOK_AFTER)) \
-  $(if $(value CMD_TIDY),| $(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog),cat) \
+  $(if $(value CMD_TIDY),| $(CMD_TIDY) -f $(TMP)/$(subst /,_,$(dir)$(file).tidylog)) \
   >$@ || true
 endif
 
