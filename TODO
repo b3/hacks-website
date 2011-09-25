@@ -12,20 +12,33 @@ misc
 mkweb
 =====
 
+* Add (unit ?) tests
+
 * Add support of comments (lines starting by # sign) in .keep and .ignore
   files
 
 * Fix BUGS (grep FIXME *)
 
-* Remove hard-link or add a simple way to toggle hard-link/real copy of html files
+* Enhance content position determination in template file.
 
-  When TEMPLATE is more recent than an .html file which need to be keeped and
-  which is on the same filesystem as the destination file (thus is hard-linked
-  only) the source file is reprocessed (KEEP_COPY). This may be time
-  consuming.
-  
-  Every time a TEMPLATE is modified, such source files should be restamped so
-  that they are newer. This is not really a bug, but more a kind of a bad
-  behavior, or side effect of the use of hard link.
+   Since we deal with HTML files, content should be determined by a specific
+   id attribute of some tag and not through some free text stored in
+   START_CONTENT and STOP_CONTENT variables.
 
+   If that is how to be changed the *old* behavior should be preserved and the
+   new one offered only through some flag variables.
+   
+* Complete behavior should be simplified.
 
+* CMD_KEEP should be avoided to be more efficient.
+
+   File action determination (determining if a file need to processed or
+   copied) is ugly because it use a call to a process $(shell) make functions
+   for each file in the DO_HTML variables.
+
+   A more efficient way should be investigated. The most efficient way should
+   determined that information only once.
+
+* CMD_TEMPLATE should bed verified.
+
+   See the FIXME before $(DESTINATION)/%.html target in mkweb source.
