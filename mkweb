@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # Create a static website using source and template files
 
-# Copyright (C) 2009-2010 Bruno BEAUFILS <bruno@boulgour.com>
+# Copyright (C) 2009-2011 Bruno BEAUFILS <bruno@boulgour.com>
 #
 # Look for DOC or HELP in this file for more informations.
 #
@@ -260,10 +260,11 @@ define DOC
 # ========================
 #
 # In order to prepare source files special makefiles may be used. Before
-# transformation start and using a deep-first algorithm, every PREPARE files
-# found in a directory under the root of source files is passed to the make
-# command. This call to `make` is done after having moved to the directory
-# holding the PREPARE file.
+# transformation start and using a deep-first algorithm, **every** PREPARE
+# files found in a directory under the root of source files are passed to the
+# make command. This call to `make` is done after having moved to the
+# directory holding the PREPARE file. This phase is not subject to file
+# selection process.
 #
 # If `.html` file are created by this preparation phase they are considered as
 # source files in the transformation phase.
