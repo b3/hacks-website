@@ -389,8 +389,8 @@ NEXT_MAKECMDGOALS := $(subst prepare,,$(MAKECMDGOALS))
 
 endif
 
-# Try to improve performance
-MAKEFLAGS += -rR --no-print-directory
+# Try to improve performance and deal symbolic links as file
+MAKEFLAGS += -rR --no-print-directory -L
 .PHONY: \
 	help doc quick \
 	create prepare \
