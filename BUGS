@@ -3,6 +3,9 @@
 mkweb
 =====
 
+* when a filename contains a quote it cannot be copied, since it is used in
+  CMD_COPY to protect other special characters.
+
 * when a .keep or .ignore file is modified nothing is remade.
 
 * check should use DO_CHECK_GNUCMD for cp or else DO_COPY may not work under

@@ -746,14 +746,14 @@ endif
 # destination directory
 ifeq ($(HARD_LINK),0)
 CMD_COPY = \
-  test -L $< && flags=-PR ; \
+  test -L '$<' && flags=-PR ; \
   mkdir -p $(dir $@) && \
-  cp $$flags -f $< $@
+  cp $$flags -f '$<' '$@'
 else
 CMD_COPY = \
-  test -L $< && flags=-PR ; \
+  test -L '$<' && flags=-PR ; \
   mkdir -p $(dir $@) && \
-  ln -f $< $@ 2>/dev/null 1>&2 || cp $$flags -f $< $@
+  ln -f '$<' '$@' 2>/dev/null 1>&2 || cp $$flags -f '$<' '$@'
 endif
 
 # Output all dir containing makefile used to prepare source files
