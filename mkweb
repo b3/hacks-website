@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # Create a static website using source and template files
 
-# Copyright (C) 2009-2011 Bruno BEAUFILS <bruno@boulgour.com>
+# Copyright (C) 2009-2012 Bruno BEAUFILS <bruno@boulgour.com>
 #
 # Look for DOC or HELP in this file for more informations.
 #
@@ -14,7 +14,7 @@
 ##############################################################################
 
 VERSION := 3-dev
-VERSION_TIMESTAMP := 20111103
+VERSION_TIMESTAMP := 20120607
 
 # Here are "interesting" variables corresponding to some basic settings. They
 # must be recursively expanded if they use less "interesting" variables
@@ -89,10 +89,8 @@ ifeq ($(origin HARD_LINK), undefined)
 HARD_LINK := 0
 endif
 
-# Default action to execute (indirect so that it can be adjusted in SETTINGS)
-all: default
-
-default: create
+# Default action to execute (maybe modified if DEFAULT_JOB is set)
+all: create
 
 define QUICKDOC
 ##############################################################################
@@ -319,7 +317,8 @@ define HELP
 #     clean            remove unnecessary files (backup files, etc.)
 #     real-clean       remove generated files and unnecessary files
 #
-# If no ACTION specified the `create` one is issued.
+# If no ACTION specified the `create` one is issued unless DEFAULT_ACTION
+# variable is set. 
 ##############################################################################
 endef
 export HELP
@@ -359,6 +358,12 @@ ifeq ($(wildcard $(SETTINGS)),$(SETTINGS))
 include $(SETTINGS)
 endif
 
+# Modify default target if DEFAULT_ACTION is set
+ifneq ($(DEFAULT_ACTION),)
+default: $(DEFAULT_ACTION)
+.DEFAULT_GOAL := default
+endif
+
 # What shell to use
 SHELL := /bin/bash
 
@@ -392,6 +397,7 @@ endif
 # Try to improve performance and deal symbolic links as file
 MAKEFLAGS += -rR --no-print-directory -L
 .PHONY: \
+    all default \
 	help doc quick \
 	create prepare \
 	check \
