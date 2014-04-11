@@ -13,3 +13,6 @@ sed -r \
 -e '/endef/ d' \
 -e 's/^export.*$$//' \
 > mkweb.md
+
+fixme:
+	grep -r FIXME: * | sed -re 's/^([^:]*:).*(FIXME:)/\1 \2/'
