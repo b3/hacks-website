@@ -22,7 +22,9 @@ dependency possible. They are mainly written in perl.
 
 The one I used more is `mkweb` which is self documented: look at the code or
 at the file [`mkweb.md`](mkweb.md) which is an automatic extraction of
-it. This one is not written in perl but in GNU makefile.
+it. This one is not written in perl but in GNU makefile (was a challenge to
+myself: **one** script to do everything on GNU/Linux as well as other unices,
+e.g. MacOS X, with everything in one directory).
 
 
 Others tools of same interest
