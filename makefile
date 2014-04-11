@@ -1,4 +1,5 @@
-mkweb-doc:
+.PHONY:build-doc
+build-doc:
 	sed -n \
 -e '/define QUICKDOC/,/export QUICKDOC/ p' \
 -e '/define DOC/,/export DOC/ p' \
@@ -14,5 +15,11 @@ sed -r \
 -e 's/^export.*$$//' \
 > mkweb.md
 
+.PHONY: fixme
 fixme:
 	grep -r FIXME: * | sed -re 's/^([^:]*:).*(FIXME:)/\1 \2/'
+
+.PHONY: clean
+clean:
+	rm mkweb.md
+	find . -name '*~' -delete
