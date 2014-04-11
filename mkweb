@@ -96,57 +96,57 @@ define QUICKDOC
 ##############################################################################
 # 1. Create a template html file such as :
 #
-#    +-- template.html -----------------------------+
-#    | <html>                                       |
-#    |   <head></head>                              |
-#    |   <body>                                     |
-#    |     <h1>My website</h1>                      |
-#    |     <!-- @START_CONTENT@ -->                 |
-#    |     <p>Content will come here</p>            |
-#    |     <p>Use this file to set up your CSS.</p> |
-#    |     <!-- @END_CONTENT@ -->                   |
-#    |   </body>                                    |
-#    | </html>                                      |
-#    +----------------------------------------------+
+#         +-- template.html -----------------------------+
+#         | <html>                                       |
+#         |   <head></head>                              |
+#         |   <body>                                     |
+#         |     <h1>My website</h1>                      |
+#         |     <!-- @START_CONTENT@ -->                 |
+#         |     <p>Content will come here</p>            |
+#         |     <p>Use this file to set up your CSS.</p> |
+#         |     <!-- @END_CONTENT@ -->                   |
+#         |   </body>                                    |
+#         | </html>                                      |
+#         +----------------------------------------------+
 #
 # 2. Create source files containing content such as :
 #
-#    +-- welcome.html -------------------------------------------+
-#    | <p>Welcome guys</p>                                       |
-#    | <p>                                                       |
-#    |    In this website you will not find anything interesting |
-#    |    about <a href="about/me.html">me</a>                   |
-#    | </p>                                                      |
-#    +-----------------------------------------------------------+
+#         +-- welcome.html -------------------------------------------+
+#         | <p>Welcome guys</p>                                       |
+#         | <p>                                                       |
+#         |    In this website you will not find anything interesting |
+#         |    about <a href="about/me.html">me</a>                   |
+#         | </p>                                                      |
+#         +-----------------------------------------------------------+
 #    
-#    +-- about/me.html -----------------------------------------------------+
-#    | <p>You have been warned !</p>                                        |
-#    | <p>Nothing here, go back <a href="@ROOT@/welcome.html">home</a></p>  |
-#    +----------------------------------------------------------------------+
+#         +-- about/me.html -----------------------------------------------------+
+#         | <p>You have been warned !</p>                                        |
+#         | <p>Nothing here, go back <a href="@ROOT@/welcome.html">home</a></p>  |
+#         +----------------------------------------------------------------------+
 #    
 # 3. Call the command and specify the destination website directory path :
 #
-#    mkweb DESTINATION=/path/to/your/website/destination
+#         mkweb DESTINATION=/path/to/your/website/destination
 #
 # 4. That's it your website is created at the right place, with all page
 #    having the same layout taken from your template file, content being
 #    inserted at the right place.
 # 
 # For more details call `./mkweb doc`
+#
 ##############################################################################
 endef
 export QUICKDOC
 
 define DOC
 ##############################################################################
-#
 # In this documentation :
 #
 # * uppercased words refer to variables defined in mkweb command file ;
 #
 # * root of source files is where the command is executed.
 #
-# mkweb is a command build as a "simple" makefile which can be processed by
+# mkweb is a command build as a *simple* makefile which can be processed by
 # GNU make (which should thus be installed in order to run it).
 #
 # The goal of this command is to use files with `.html` extension (source
@@ -158,7 +158,7 @@ define DOC
 # before being transformed.
 #
 # Files transformation process
-# ============================
+# ----------------------------
 #
 # Created file are based on a template in which every text between
 # START_CONTENT and STOP_CONTENT is replaced by the content of the processed
@@ -205,7 +205,7 @@ define DOC
 # before tidy), via HOOK_AFTER.
 #
 # Files selection process
-# =======================
+# -----------------------
 #
 # Files without `.html` suffix are copied without modification in their
 # destination directory.
@@ -255,7 +255,7 @@ define DOC
 # Files selection is done by a perl script build and stored in PERL_FIND.
 #
 # File preparation process
-# ========================
+# ------------------------
 #
 # In order to prepare source files special makefiles may be used. Before
 # transformation start and using a deep-first algorithm, **every** PREPARE
@@ -268,7 +268,7 @@ define DOC
 # source files in the transformation phase.
 #
 # Customisation
-# =============
+# -------------
 #
 # Customisation of almost everything in the command may be done by modifying
 # variables. This can be done :
@@ -294,31 +294,31 @@ export DOC
 
 define HELP
 ##############################################################################
-# usage: $(MAKEFILE) [VAR=VALUE ...] [ACTION]
-#
-# where ACTION includes
-#
-#     help             show this help message
-#     quick            display a very short howto about $(MAKEFILE)
-#     doc              display documentation
-#     version          display version number
-#
-#     prepare          prepare source files
-#     create           prepare source files and then create web site pages
-#
-#     check            check if needed commands and files are available
-#
-#     list-vars        list available variables with current values
-#     list-files       list source files to be processed
-#     list-build       list destination files to be created
-#     list-ignored     list ignored files in source directory
-#     list-prepare     list directory in which preparation takes place
-#
-#     clean            remove unnecessary files (backup files, etc.)
-#     real-clean       remove generated files and unnecessary files
-#
-# If no ACTION specified the `create` one is issued unless DEFAULT_ACTION
-# variable is set. 
+#     usage: $(MAKEFILE) [VAR=VALUE ...] [ACTION]
+#     
+#     where ACTION includes
+#     
+#         help             show this help message
+#         quick            display a very short howto about $(MAKEFILE)
+#         doc              display documentation
+#         version          display version number
+#     
+#         prepare          prepare source files
+#         create           prepare source files and then create web site pages
+#     
+#         check            check if needed commands and files are available
+#     
+#         list-vars        list available variables with current values
+#         list-files       list source files to be processed
+#         list-build       list destination files to be created
+#         list-ignored     list ignored files in source directory
+#         list-prepare     list directory in which preparation takes place
+#     
+#         clean            remove unnecessary files (backup files, etc.)
+#         real-clean       remove generated files and unnecessary files
+#     
+#     If no ACTION specified the `create` one is issued unless DEFAULT_ACTION
+#     variable is set. 
 ##############################################################################
 endef
 export HELP
@@ -831,7 +831,7 @@ DEBUG_DEPS :=
 
 # Show help message
 help:
-	@echo "$$HELP" | tr -d '#'
+	@echo "$$HELP" | sed -e 's/^#     //' -e 's/^#*//'
 
 # Show very short howto
 quick:
