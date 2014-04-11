@@ -5,7 +5,9 @@ This is a collection of small **dirty** hacks I have written along the time
 and that are all about creation of website (collection of HTML pages and
 classical files).
 
-They are not guaranteed to work nor be completed nor even to be useful.
+They are not guaranteed to work nor be completed nor even to be useful. 
+
+**I do not maintain or use them anymore.**
 
 They are all written to be used as command line tool and with the least
 dependency possible. They are mainly written in perl.
