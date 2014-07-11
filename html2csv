@@ -1,4 +1,13 @@
 #!/usr/bin/perl
+# Output HTML tables in CSV
+
+# Copyright (C) 2014 Bruno BEAUFILS <bruno@boulgour.com>
+#
+# This software comes with ABSOLUTELY NO WARRANTY.
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation in its version 2.
+# See the README or COPYING file for details.
 
 use strict;
 use warnings;
