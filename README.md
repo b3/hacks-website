@@ -14,6 +14,8 @@ dependency possible. They are mainly written in perl.
 
 - `get-element` -- print specified HTML elements data (or attribute value)
 
+- `html2csv` -- export HTML tables in CSV format
+
 - `htmltoc` -- generate table of contents from headings in (x)HTML
 
 - `htmltree` -- print HTML tree

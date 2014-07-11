@@ -1,0 +1,106 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Getopt::Long;
+use Pod::Usage;
+use File::Temp qw/tempfile/;
+use HTML::TableExtract;
+use open qw/:std :utf8/;        # Ensure UTF-8 support
+
+# La documentation
+=pod
+
+=encoding UTF-8
+
+=head1 NAME
+
+html2csv - Export HTML tables into CSV
+
+=head1 SYNOPSIS
+
+=over
+
+=item html2csv [OPTIONS...] [FILE...]
+
+=item html2csv -h
+
+=back
+
+=head1 OPTIONS
+
+=over
+
+=item B<-s> I<STRING>, --separator I<STRING>
+
+Use I<STRING> instead of comma as field separator.
+
+=item B<-n>, --no-protection
+
+Do not quote data in each field.
+
+=item B<-q> I<CHAR>, --quote I<CHAR>
+
+Use I<CHAR> instead of double-quote for data quotation.
+
+=item B<-h>, B<--help>
+
+Print short help message.
+
+=item B<--man>
+
+Print full documentation.
+
+=back
+
+=head1 DESCRIPTION
+
+Print data found in HTML table read from standard input (or specified files)
+in CSV (comma-separated values). Each field is double-quoted and separated by
+comma.
+
+=cut
+
+# Command line parameters
+my $separator = ",";
+my $quote = '"';
+my $protect = 1;
+
+if (!GetOptions('separator|s=s' => \$separator,
+                'quote|q=s' => \$quote,
+                'no-protection|n' => sub { $protect = 0; },
+                'man' => sub { pod2usage(-verbose=>2, -noperldoc=>1); },
+                'help|h' => sub { pod2usage(-verbose=>1, -noperldoc=>1); })) {
+  pod2usage("Syntax error!\n");
+}
+
+# Table::Extract object construction
+my $te = HTML::TableExtract->new();
+
+# Parse HTML data from files
+local $/;
+$te->parse(<>);
+
+# Process every tables
+foreach my $ts ($te->tables) {
+  foreach my $row ($ts->rows) {
+    # Protect cells content
+    if ($protect) {
+      map {
+        if ($_) {
+          $_ =~ s/$quote/$quote$quote/g;
+          $_ = "$quote$_$quote";
+        }
+      } (@$row);
+    }
+    # I cannot use join because some cell may be undefined (if empty)
+    foreach (@{$row}) {
+      if ($_) {
+        print "$_$separator";
+      } else {
+        print "$separator";
+      }
+    }
+    print "\n";
+  }
+}
